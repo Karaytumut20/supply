@@ -1,13 +1,4 @@
-import fs from 'fs'
-import path from 'path'
-
-console.log(
-  '⚙️ Admin Paneli Geliştiriliyor: Arama, Filtreleme ve Dinamik Yükleme Modalı Ekleniyor...\n'
-)
-
-const files = {
-  // ADMIN DASHBOARD (Çok daha gelişmiş ve dinamik yapı)
-  'app/pages/admin/index.vue': `<script setup lang="ts">
+<script setup lang="ts">
 import { ref, computed } from 'vue'
 
 useSeoMeta({ title: 'Admin Dashboard' })
@@ -152,7 +143,7 @@ const handleUpload = () => {
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 mb-8">
-          <div v-for="(stat, index) in stats" :key="stat.label" :class="\`reveal-text delay-\${(index+1)*50}\`" class="bg-white p-6 rounded-2xl border border-zinc-200/80 shadow-sm">
+          <div v-for="(stat, index) in stats" :key="stat.label" :class="`reveal-text delay-${(index+1)*50}`" class="bg-white p-6 rounded-2xl border border-zinc-200/80 shadow-sm">
             <h3 class="text-zinc-500 text-sm font-medium mb-3">{{ stat.label }}</h3>
             <div class="flex items-end justify-between">
               <span class="text-3xl font-bold text-black tracking-tight">{{ stat.value }}</span>
@@ -259,18 +250,4 @@ const handleUpload = () => {
     </Teleport>
 
   </div>
-</template>`
-}
-
-for (const [filepath, content] of Object.entries(files)) {
-  const fullPath = path.join(process.cwd(), filepath)
-  const dir = path.dirname(fullPath)
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
-  }
-  fs.writeFileSync(fullPath, content.trim() + '\n', 'utf8')
-  console.log(`✅ Güncellendi: ${filepath}`)
-}
-
-console.log('\n🔥 Admin Paneli Harika Bir Şekilde Geliştirildi!')
-console.log('Test etmek için: http://localhost:3000/admin adresine gidin.')
+</template>
