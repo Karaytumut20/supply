@@ -19,7 +19,7 @@ onUnmounted(() => {
     <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">
       <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">
 
-        <div class="absolute inset-0 bg-zinc-900/60 backdrop-blur-sm" @click="close"></div>
+        <div class="absolute inset-0 bg-zinc-900/80 backdrop-blur-sm" @click="close"></div>
 
         <Transition enter-active-class="transition duration-400 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">
           <div v-if="isOpen" class="relative w-full max-w-6xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[85vh]">
@@ -28,9 +28,11 @@ onUnmounted(() => {
                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
 
-            <div class="w-full md:w-2/3 bg-[#f4f4f5] p-6 md:p-8 flex items-center justify-center">
-               <div class="w-full h-full rounded-[1.5rem] overflow-hidden shadow-sm border border-zinc-200">
-                 <img :src="item?.image" class="w-full h-full object-cover" />
+            <div class="w-full md:w-2/3 bg-[#f4f4f5] p-6 md:p-12 flex items-center justify-center">
+               <div class="w-full relative rounded-2xl overflow-hidden shadow-lg border border-black/5 bg-black">
+                 <video autoplay loop muted playsinline class="w-full aspect-video object-cover">
+                    <source :src="item?.video" type="video/mp4" />
+                 </video>
                </div>
             </div>
 
@@ -41,11 +43,11 @@ onUnmounted(() => {
                  </span>
                </div>
 
-               <h2 class="text-4xl font-medium tracking-tight text-black mb-4">{{ item?.title }}</h2>
-               <div class="text-2xl font-light text-zinc-500 mb-8">{{ item?.price }}</div>
+               <h2 class="text-4xl font-medium tracking-tight text-black mb-1">{{ item?.title }}</h2>
+               <p class="text-[15px] text-zinc-500 font-light mb-8">{{ item?.categories?.join(', ') }}</p>
 
                <p class="text-zinc-600 leading-relaxed mb-8 text-sm">
-                 Detailed inspection of the component. This minimalist and perfectly crafted design mimics the premium quality found on inspo.page, ready for your next big project. Includes seamless animations and responsive layouts.
+                 Detailed inspection of the component. This minimalist and perfectly crafted design mimics the premium quality found on inspo.page, ready for your next big project.
                </p>
 
                <div class="mt-auto flex flex-col gap-4">

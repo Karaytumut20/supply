@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 
-const tags = ['Hero', 'Navigation', 'Preloader', 'Page Transition', 'Section Transition', 'Card', 'Footer', 'Button', 'Team']
+const tags = ['All', 'Hero', 'Navigation', 'Preloader', 'Page Transition', 'Section Transition', 'Card', 'Footer', 'Button', 'Team']
+const activeTag = ref('All')
+
+const LOCAL_VIDEO = '/videos/sample.mp4'
 
 const items = [
-  { id: 1, title: 'Nova Dashboard', price: '$49', image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=800&auto=format&fit=crop', tags: ['new'] },
-  { id: 2, title: 'Aura Portfolio', price: '$29', image: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?q=80&w=800&auto=format&fit=crop', tags: ['new'] },
-  { id: 3, title: 'Nexus Store', price: '$99', image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?q=80&w=800&auto=format&fit=crop', tags: ['new'] },
-  { id: 4, title: 'Verve Agency', price: '$59', image: 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?q=80&w=800&auto=format&fit=crop', tags: ['hot'] },
-  { id: 5, title: 'Zenith SaaS', price: '$79', image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800&auto=format&fit=crop', tags: ['offer'] },
-  { id: 6, title: 'Block Web3', price: '$89', image: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?q=80&w=800&auto=format&fit=crop', tags: ['new'] }
+  { id: 1, title: 'Estrela', categories: ['Page Transition'], video: LOCAL_VIDEO, tags: ['new'] },
+  { id: 2, title: 'Sunday', categories: ['Simple, Text'], video: LOCAL_VIDEO, tags: ['new'] },
+  { id: 3, title: 'Estrela', categories: ['List, Social Proof'], video: LOCAL_VIDEO, tags: ['new'] },
+  { id: 4, title: 'Nexus Store', categories: ['Navigation', 'Button'], video: LOCAL_VIDEO, tags: [] },
+  { id: 5, title: 'Zenith SaaS', categories: ['Preloader', 'Hero'], video: LOCAL_VIDEO, tags: ['new'] },
+  { id: 6, title: 'Block Web3', categories: ['Card', 'Section Transition'], video: LOCAL_VIDEO, tags: [] }
 ]
+
+const filteredItems = computed(() => {
+  if (activeTag.value === 'All') return items
+  return items.filter(item => item.categories.some(cat => cat.includes(activeTag.value)))
+})
 
 const selectedItem = ref(null)
 const isModalOpen = ref(false)
@@ -23,22 +31,19 @@ const openModal = (item: any) => {
 
 <template>
   <div>
-    <section class="bg-[#0a0a0a] text-white pt-36 pb-24 px-6 md:px-12 w-full">
-      <div class="max-w-[1600px] mx-auto flex flex-col items-start">
-
+    <section class="bg-[#0a0a0a] text-white pt-32 pb-20 px-5 md:px-6 w-full">
+      <div class="w-full flex flex-col items-start">
         <div class="flex gap-1.5 mb-8">
           <div class="w-[22px] h-[22px] rounded-full bg-[#3b82f6]"></div>
           <div class="w-[22px] h-[22px] bg-[#ef4444]" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></div>
           <div class="w-[22px] h-[22px] bg-[#eab308]"></div>
         </div>
-
         <h1 class="text-[2.5rem] md:text-[3.5rem] lg:text-[4rem] font-medium tracking-tight mb-4 max-w-3xl leading-[1.05]">
           The website inspo library —<br/>curated at the component level
         </h1>
         <p class="text-zinc-400 text-lg mb-10 tracking-wide">
           Organized for fast inspiration, updated weekly.
         </p>
-
         <div class="flex gap-4 items-center">
           <button class="bg-white hover:bg-zinc-200 text-black px-6 py-3 rounded-full text-sm font-semibold transition-colors">
             + Sub
@@ -47,24 +52,39 @@ const openModal = (item: any) => {
             <span class="text-white font-bold">73</span> Joined Today
           </div>
         </div>
-
       </div>
     </section>
 
-    <section class="bg-white border-b border-zinc-200 px-6 md:px-12 py-5 sticky top-0 z-40">
-      <div class="max-w-[1600px] mx-auto flex items-center gap-8 overflow-x-auto no-scrollbar">
+    <section class="bg-white/90 backdrop-blur-md border-b border-zinc-200 px-5 md:px-6 py-4 sticky top-0 z-40">
+      <div class="w-full flex items-center gap-8 overflow-x-auto no-scrollbar cursor-grab active:cursor-grabbing">
         <span class="text-[10px] font-mono text-zinc-400 tracking-[0.15em] whitespace-nowrap uppercase">Popular Tags</span>
         <div class="flex gap-2.5">
-          <button v-for="tag in tags" :key="tag" class="bg-[#f4f4f5] hover:bg-[#e4e4e7] text-zinc-700 px-4 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors whitespace-nowrap">
+          <button
+            v-for="tag in tags"
+            :key="tag"
+            @click="activeTag = tag"
+            :class="[
+              'px-4 py-1.5 rounded-full text-[10px] font-mono tracking-widest uppercase transition-colors whitespace-nowrap',
+              activeTag === tag ? 'bg-black text-white shadow-md' : 'bg-[#f4f4f5] hover:bg-[#e4e4e7] text-zinc-700'
+            ]"
+          >
             {{ tag }}
           </button>
         </div>
       </div>
     </section>
 
-    <section class="bg-white px-6 md:px-12 py-10 min-h-screen">
-      <div class="max-w-[1600px] mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <ProductCard v-for="item in items" :key="item.id" :item="item" @open="openModal" />
+    <section class="bg-white px-5 md:px-6 py-8 min-h-screen overflow-hidden">
+      <TransitionGroup
+        name="list"
+        tag="div"
+        class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 relative"
+      >
+        <ProductCard v-for="item in filteredItems" :key="item.id" :item="item" @open="openModal" />
+      </TransitionGroup>
+
+      <div v-if="filteredItems.length === 0" class="w-full text-center py-24 text-zinc-400 font-medium">
+        Bu kategoride henüz video bulunmuyor.
       </div>
     </section>
 

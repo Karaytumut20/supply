@@ -2,15 +2,12 @@
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
-
-  // BURAYI DÜZELTTİK: Sadece ~/assets... olarak kalmalı
   css: ['~/assets/css/main.css'],
-
   postcss: {
     plugins: {
       tailwindcss: {},
-      autoprefixer: {}
-    }
+      autoprefixer: {},
+    },
   },
   modules: ['@nuxtjs/seo'],
   site: {
@@ -18,5 +15,8 @@ export default defineNuxtConfig({
     name: 'Inspo Clone',
     description: 'A visual replication of inspo.page',
     defaultLocale: 'en'
+  },
+  app: {
+    pageTransition: { name: 'page', mode: 'out-in' }
   }
 })

@@ -3,14 +3,29 @@
 @tailwind utilities;
 
 body {
-  @apply bg-white text-black antialiased selection:bg-blue-500 selection:text-white;
+  @apply bg-white text-black antialiased selection:bg-zinc-800 selection:text-white;
 }
 
-/* Scrollbar Gizleme / Özelleştirme */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Filtreleme Animasyonları */
+.list-move,
+.list-enter-active,
+.list-leave-active {
+  transition: all 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.list-enter-from,
+.list-leave-to {
+  opacity: 0;
+  transform: scale(0.95) translateY(30px);
+}
+.list-leave-active {
+  position: absolute;
+  z-index: -1;
 }
