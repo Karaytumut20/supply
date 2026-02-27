@@ -1,4 +1,3 @@
-// https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
   devtools: { enabled: false },
@@ -9,7 +8,17 @@ export default defineNuxtConfig({
       autoprefixer: {},
     },
   },
-  modules: ['@nuxtjs/seo'],
+  modules: [
+    '@nuxtjs/seo',
+    '@sidebase/nuxt-auth',
+    '@pinia/nuxt'
+  ],
+  auth: {
+    globalAppMiddleware: false,
+    provider: {
+      type: 'authjs'
+    }
+  },
   site: {
     url: 'http://localhost:3000',
     name: 'Inspo Clone',
