@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-
 const isAboutOpen = ref(false)
+const { data: user } = await useFetch('/api/auth/me')
 </script>
-
 <template>
   <div class="min-h-screen bg-white font-sans flex flex-col">
     <header class="absolute top-0 w-full z-50 px-5 md:px-6 py-5 flex items-center justify-end pointer-events-none">
@@ -14,16 +13,11 @@ const isAboutOpen = ref(false)
         <button @click="isAboutOpen = true" class="bg-[#1f1f1f] hover:bg-[#2a2a2a] text-zinc-300 transition-colors px-3 py-1.5 rounded-full flex items-center gap-2">
           About <span class="text-[9px] bg-zinc-600 text-white px-1.5 py-0.5 rounded uppercase tracking-widest">New</span>
         </button>
-        <NuxtLink to="/sign-in" class="bg-white hover:bg-zinc-200 text-black transition-colors px-4 py-1.5 rounded-full shadow-sm">
-          Sign in
-        </NuxtLink>
+        <NuxtLink v-if="user" to="/dashboard" class="bg-indigo-600 hover:bg-indigo-700 text-white transition-colors px-4 py-1.5 rounded-full shadow-sm">Dashboard</NuxtLink>
+        <NuxtLink v-else to="/sign-in" class="bg-white hover:bg-zinc-200 text-black transition-colors px-4 py-1.5 rounded-full shadow-sm border border-zinc-200">Sign in</NuxtLink>
       </div>
     </header>
-
-    <main class="flex-grow">
-      <slot />
-    </main>
-
+    <main class="flex-grow"><slot /></main>
     <UiAboutModal :isOpen="isAboutOpen" @close="isAboutOpen = false" />
   </div>
 </template>

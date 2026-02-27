@@ -1,23 +1,29 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 
+useSeoMeta({ title: 'Home' })
+
 const tags = ['All', 'Hero', 'Navigation', 'Preloader', 'Page Transition', 'Section Transition', 'Card', 'Footer', 'Button', 'Team']
 const activeTag = ref('All')
 
-const LOCAL_VIDEO = '/videos/sample.mp4'
+// VERİTABANINDAN PROJELERİ ÇEK (Gerçek API Bağlantısı)
+const { data: dbProjects, pending } = await useFetch('/api/projects')
 
-const items = [
-  { id: 1, title: 'Estrela', categories: ['Page Transition'], video: LOCAL_VIDEO, tags: ['new'] },
-  { id: 2, title: 'Sunday', categories: ['Simple, Text'], video: LOCAL_VIDEO, tags: ['new'] },
-  { id: 3, title: 'Estrela', categories: ['List, Social Proof'], video: LOCAL_VIDEO, tags: ['new'] },
-  { id: 4, title: 'Nexus Store', categories: ['Navigation', 'Button'], video: LOCAL_VIDEO, tags: [] },
-  { id: 5, title: 'Zenith SaaS', categories: ['Preloader', 'Hero'], video: LOCAL_VIDEO, tags: ['new'] },
-  { id: 6, title: 'Block Web3', categories: ['Card', 'Section Transition'], video: LOCAL_VIDEO, tags: [] }
-]
+// Gelen veriyi frontend'in beklediği formata dönüştür
+const items = computed(() => {
+  if (!dbProjects.value) return []
+  return dbProjects.value.map((p: any) => ({
+    ...p,
+    video: p.videoUrl, // Card componenti 'video' propu bekliyor
+    categories: p.categories ? p.categories.split(',').map((c: string) => c.trim()) : [],
+    tags: p.tags ? p.tags.split(',').map((t: string) => t.trim()) : []
+  }))
+})
 
+// Kategoriye göre filtrele
 const filteredItems = computed(() => {
-  if (activeTag.value === 'All') return items
-  return items.filter(item => item.categories.some(cat => cat.includes(activeTag.value)))
+  if (activeTag.value === 'All') return items.value
+  return items.value.filter((item: any) => item.categories.some((cat: string) => cat.toLowerCase().includes(activeTag.value.toLowerCase())))
 })
 
 const selectedItem = ref(null)
@@ -49,7 +55,7 @@ const openModal = (item: any) => {
             + Sub
           </button>
           <div class="bg-[#1f1f1f] border border-zinc-800 text-zinc-300 px-4 py-2.5 rounded-full text-[11px] font-mono tracking-widest uppercase flex items-center gap-1.5">
-            <span class="text-white font-bold">73</span> Joined Today
+            <span class="text-white font-bold">{{ items.length }}</span> Projects
           </div>
         </div>
       </div>
@@ -75,16 +81,17 @@ const openModal = (item: any) => {
     </section>
 
     <section class="bg-white px-5 md:px-6 py-8 min-h-screen overflow-hidden">
-      <TransitionGroup
-        name="list"
-        tag="div"
-        class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 relative"
-      >
+
+      <div v-if="pending" class="w-full text-center py-24 text-zinc-400 font-medium animate-pulse">
+        Loading projects from database...
+      </div>
+
+      <TransitionGroup v-else name="list" tag="div" class="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 relative">
         <ProductCard v-for="item in filteredItems" :key="item.id" :item="item" @open="openModal" />
       </TransitionGroup>
 
-      <div v-if="filteredItems.length === 0" class="w-full text-center py-24 text-zinc-400 font-medium">
-        Bu kategoride henüz video bulunmuyor.
+      <div v-if="!pending && filteredItems.length === 0" class="w-full text-center py-24 text-zinc-400 font-medium">
+        Bu kategoride henüz video bulunmuyor. Admin panelinden ekleyebilirsiniz.
       </div>
     </section>
 

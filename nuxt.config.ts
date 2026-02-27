@@ -3,29 +3,15 @@ export default defineNuxtConfig({
   devtools: { enabled: false },
   css: ['~/assets/css/main.css'],
   postcss: {
-    plugins: {
-      tailwindcss: {},
-      autoprefixer: {},
-    },
+    plugins: { tailwindcss: {}, autoprefixer: {} },
   },
   modules: [
     '@nuxtjs/seo',
-    '@sidebase/nuxt-auth',
     '@pinia/nuxt'
   ],
-  auth: {
-    globalAppMiddleware: false,
-    provider: {
-      type: 'authjs'
-    }
-  },
   site: {
     url: 'http://localhost:3000',
-    name: 'Inspo Clone',
-    description: 'A visual replication of inspo.page',
-    defaultLocale: 'en'
+    name: 'Inspo Clone'
   },
-  app: {
-    pageTransition: { name: 'page', mode: 'out-in' }
-  }
+  app: { pageTransition: { name: 'page', mode: 'out-in' } }
 })
