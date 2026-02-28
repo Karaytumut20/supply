@@ -1,203 +1,153 @@
 import fs from 'fs'
 import path from 'path'
 
-// 1. SORUNLU DOSYAYI SİLİYORUZ
-const problemFile = path.join(process.cwd(), 'server/api/auth/[...].ts')
-try {
-  if (fs.existsSync(problemFile)) {
-    fs.unlinkSync(problemFile)
-  }
-} catch (err) {}
-
-// 2. NUXT CONFIG'DEN NUXT-AUTH'U TAMAMEN SİLİYORUZ
-const nuxtConfigContent = [
-  'export default defineNuxtConfig({',
-  "  compatibilityDate: '2025-07-15',",
-  '  devtools: { enabled: false },',
-  "  css: ['~/assets/css/main.css'],",
-  '  postcss: {',
-  '    plugins: { tailwindcss: {}, autoprefixer: {} },',
-  '  },',
-  '  modules: [',
-  "    '@nuxtjs/seo',",
-  "    '@pinia/nuxt'",
-  '  ],',
-  '  site: {',
-  "    url: 'http://localhost:3000',",
-  "    name: 'Inspo Clone'",
-  '  },',
-  "  app: { pageTransition: { name: 'page', mode: 'out-in' } }",
-  '})'
-].join('\n')
-fs.writeFileSync(path.join(process.cwd(), 'nuxt.config.ts'), nuxtConfigContent, 'utf8')
-
-// 3. KENDİ TERTEMİZ LOGİN API'MİZ
-const loginApi = [
-  "import { PrismaClient } from '@prisma/client'",
-  "import bcrypt from 'bcryptjs'",
-  'const prisma = new PrismaClient()',
-  'export default defineEventHandler(async (event) => {',
-  '  const body = await readBody(event)',
-  '  const { email, password } = body',
-  "  if(!email || !password) throw createError({ statusCode: 400, statusMessage: 'Zorunlu alanlar eksik' })",
-  '  const user = await prisma.user.findUnique({ where: { email } })',
-  "  if(!user) throw createError({ statusCode: 401, statusMessage: 'Kullanici bulunamadi' })",
-  '  const isValid = await bcrypt.compare(password, user.password)',
-  "  if(!isValid) throw createError({ statusCode: 401, statusMessage: 'Hatali sifre' })",
-  '  // Sorunsuz, sonsuz dongusuz basit cerez atamasi',
-  "  setCookie(event, 'auth_token', user.id, { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 7 })",
-  '  return { success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role } }',
-  '})'
-].join('\n')
-
-// 4. KENDİ KAYIT OLMA (REGISTER) API'MİZ
-const registerApi = [
-  "import { PrismaClient } from '@prisma/client'",
-  "import bcrypt from 'bcryptjs'",
-  'const prisma = new PrismaClient()',
-  'export default defineEventHandler(async (event) => {',
-  '  const body = await readBody(event)',
-  '  const { email, password, name } = body',
-  "  if(!email || !password) throw createError({ statusCode: 400, statusMessage: 'Zorunlu alanlar eksik' })",
-  '  const existing = await prisma.user.findUnique({ where: { email } })',
-  "  if(existing) throw createError({ statusCode: 400, statusMessage: 'Bu email zaten kayitli' })",
-  '  const hashedPassword = await bcrypt.hash(password, 10)',
-  '  const user = await prisma.user.create({',
-  "    data: { email, password: hashedPassword, name: name || email.split('@')[0], role: 'USER' }",
-  '  })',
-  "  setCookie(event, 'auth_token', user.id, { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 7 })",
-  '  return { success: true, user: { id: user.id, name: user.name, email: user.email } }',
-  '})'
+// 1. PRISMA SCHEMA GUNCELLEMESI (Favoriler tablosu eklendi)
+const prismaSchema = [
+  'generator client {',
+  '  provider = "prisma-client-js"',
+  '}',
+  'datasource db {',
+  '  provider = "postgresql"',
+  '  url      = env("DATABASE_URL")',
+  '}',
+  'model User {',
+  '  id            String         @id @default(uuid())',
+  '  name          String?',
+  '  email         String         @unique',
+  '  password      String',
+  '  role          Role           @default(USER)',
+  '  createdAt     DateTime       @default(now())',
+  '  tickets       Ticket[]',
+  '  savedProjects SavedProject[]',
+  '}',
+  'model Project {',
+  '  id         String         @id @default(uuid())',
+  '  title      String',
+  '  videoUrl   String',
+  '  categories String',
+  '  tags       String?',
+  '  status     String         @default("Active")',
+  '  createdAt  DateTime       @default(now())',
+  '  savedBy    SavedProject[]',
+  '}',
+  'model SavedProject {',
+  '  id        String   @id @default(uuid())',
+  '  userId    String',
+  '  projectId String',
+  '  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)',
+  '  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)',
+  '  createdAt DateTime @default(now())',
+  '  @@unique([userId, projectId])',
+  '}',
+  'model FAQ {',
+  '  id       String @id @default(uuid())',
+  '  question String',
+  '  answer   String',
+  '}',
+  'model Ticket {',
+  '  id        String   @id @default(uuid())',
+  '  subject   String',
+  '  message   String',
+  '  status    String   @default("OPEN")',
+  '  userId    String',
+  '  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)',
+  '  createdAt DateTime @default(now())',
+  '}',
+  'enum Role {',
+  '  USER',
+  '  ADMIN',
+  '}'
 ].join('\n')
 
-// 5. KULLANICIYI GETİREN API (ME)
-const meApi = [
+fs.writeFileSync(path.join(process.cwd(), 'prisma/schema.prisma'), prismaSchema, 'utf8')
+
+// 2. DASHBOARD VERILERINI GETIREN API
+const dashboardApi = [
   "import { PrismaClient } from '@prisma/client'",
   'const prisma = new PrismaClient()',
   'export default defineEventHandler(async (event) => {',
   "  const userId = getCookie(event, 'auth_token')",
-  '  if(!userId) return null;',
-  '  const user = await prisma.user.findUnique({ where: { id: userId } })',
-  '  if(!user) return null;',
-  '  return { id: user.id, name: user.name, email: user.email, role: user.role }',
-  '})'
-].join('\n')
-
-// 6. CIKIS YAPMA API'Sİ
-const logoutApi = [
-  'export default defineEventHandler((event) => {',
-  "  deleteCookie(event, 'auth_token', { path: '/' })",
-  '  return { success: true }',
-  '})'
-].join('\n')
-
-// Dosyaları sunucuya yaz
-const apiDir = path.join(process.cwd(), 'server/api/auth')
-if (!fs.existsSync(apiDir)) fs.mkdirSync(apiDir, { recursive: true })
-
-fs.writeFileSync(path.join(apiDir, 'login.post.ts'), loginApi, 'utf8')
-fs.writeFileSync(path.join(apiDir, 'register.post.ts'), registerApi, 'utf8')
-fs.writeFileSync(path.join(apiDir, 'me.get.ts'), meApi, 'utf8')
-fs.writeFileSync(path.join(apiDir, 'logout.post.ts'), logoutApi, 'utf8')
-
-// 7. GÜNCEL SIGN-IN SAYFASI (Doğrudan kendi API'lerimizi kullanıyor)
-const signInContent = [
-  '<script setup lang="ts">',
-  "import { ref } from 'vue'",
-  'const isLoginMode = ref(true)',
-  "const name = ref('')",
-  "const email = ref('')",
-  "const password = ref('')",
-  'const isLoading = ref(false)',
-  "const errorMessage = ref('')",
-  "const toggleMode = () => { isLoginMode.value = !isLoginMode.value; errorMessage.value = ''; }",
-  'const handleSubmit = async () => {',
-  '  isLoading.value = true;',
-  "  errorMessage.value = '';",
-  '  try {',
-  "    const endpoint = isLoginMode.value ? '/api/auth/login' : '/api/auth/register';",
-  '    await $fetch(endpoint, {',
-  "      method: 'POST',",
-  '      body: { name: name.value, email: email.value, password: password.value }',
-  '    });',
-  "    window.location.href = '/dashboard'; // Tertemiz tam sayfa yonlendirmesi",
-  '  } catch (err: any) {',
-  "    errorMessage.value = err.data?.statusMessage || 'Bir hata olustu.';",
-  '  } finally {',
-  '    isLoading.value = false;',
+  "  if(!userId) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })",
+  '  const savedProjects = await prisma.savedProject.findMany({',
+  '    where: { userId },',
+  '    include: { project: true },',
+  "    orderBy: { createdAt: 'desc' }",
+  '  })',
+  '  const tickets = await prisma.ticket.findMany({',
+  '    where: { userId },',
+  "    orderBy: { createdAt: 'desc' }",
+  '  })',
+  '  return {',
+  '    savedProjects: savedProjects.map(sp => sp.project),',
+  '    tickets',
   '  }',
-  '}',
-  '</script>',
-  '<template>',
-  '  <div class="min-h-screen flex bg-white">',
-  '    <div class="hidden lg:flex w-1/2 bg-[#0a0a0a] relative p-12 flex-col justify-between overflow-hidden">',
-  '      <div class="absolute inset-0 opacity-40 mix-blend-overlay overflow-hidden">',
-  '        <img src="https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop" class="w-full h-full object-cover animate-slow-pan" />',
-  '      </div>',
-  '      <div class="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] via-transparent to-transparent"></div>',
-  '      <div class="relative z-10 flex gap-1.5 reveal-text">',
-  '        <div class="w-[20px] h-[20px] rounded-full bg-[#3b82f6]"></div>',
-  '        <div class="w-[20px] h-[20px] bg-[#ef4444]" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></div>',
-  '        <div class="w-[20px] h-[20px] bg-[#eab308]"></div>',
-  '      </div>',
-  '      <div class="relative z-10">',
-  '        <h2 class="text-4xl lg:text-5xl font-medium text-white mb-6 tracking-tight leading-tight reveal-text delay-100">Start saving<br/>your inspiration.</h2>',
-  '        <p class="text-zinc-400 text-lg max-w-md font-light reveal-text delay-150">Join the community of creators. Collect your favorite web animations in one place.</p>',
-  '      </div>',
-  '    </div>',
-  '    <div class="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 relative">',
-  '      <NuxtLink to="/" class="absolute top-8 left-8 text-zinc-500 hover:text-black transition-colors flex items-center gap-2 text-sm font-medium">',
-  '        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg>',
-  '        Back to Home',
-  '      </NuxtLink>',
-  '      <div class="w-full max-w-sm reveal-text delay-50">',
-  "        <h1 class=\"text-3xl font-bold tracking-tight text-black mb-2\">{{ isLoginMode ? 'Welcome back' : 'Create an account' }}</h1>",
-  "        <p class=\"text-zinc-500 text-sm mb-8\">{{ isLoginMode ? 'Enter your details below to access your account.' : 'Fill in the details to join the community.' }}</p>",
-  '        <div v-if="errorMessage" class="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">{{ errorMessage }}</div>',
-  '        <form @submit.prevent="handleSubmit" class="flex flex-col gap-5">',
-  '          <div v-if="!isLoginMode">',
-  '            <label class="block text-sm font-medium text-zinc-700 mb-1.5">Full Name</label>',
-  '            <input v-model="name" type="text" required placeholder="John Doe" class="w-full bg-[#f4f4f5] border border-transparent focus:bg-white focus:border-zinc-300 focus:ring-4 focus:ring-zinc-100 rounded-xl px-4 py-3.5 text-black outline-none transition-all duration-200" />',
-  '          </div>',
-  '          <div>',
-  '            <label class="block text-sm font-medium text-zinc-700 mb-1.5">Email address</label>',
-  '            <input v-model="email" type="email" required placeholder="hello@example.com" class="w-full bg-[#f4f4f5] border border-transparent focus:bg-white focus:border-zinc-300 focus:ring-4 focus:ring-zinc-100 rounded-xl px-4 py-3.5 text-black outline-none transition-all duration-200" />',
-  '          </div>',
-  '          <div>',
-  '            <div class="flex justify-between items-center mb-1.5">',
-  '              <label class="block text-sm font-medium text-zinc-700">Password</label>',
-  '              <a v-if="isLoginMode" href="#" class="text-xs text-zinc-500 hover:text-black transition-colors">Forgot password?</a>',
-  '            </div>',
-  '            <input v-model="password" type="password" required placeholder="••••••••" class="w-full bg-[#f4f4f5] border border-transparent focus:bg-white focus:border-zinc-300 focus:ring-4 focus:ring-zinc-100 rounded-xl px-4 py-3.5 text-black outline-none transition-all duration-200" />',
-  '          </div>',
-  '          <button :disabled="isLoading" class="w-full bg-black text-white py-3.5 rounded-xl font-medium mt-2 hover:bg-zinc-800 transition-colors focus:ring-4 focus:ring-zinc-300 disabled:opacity-70 flex justify-center items-center h-[52px]">',
-  "            {{ isLoading ? 'Processing...' : (isLoginMode ? 'Sign In' : 'Sign Up') }}",
-  '          </button>',
-  '        </form>',
-  '        <div class="mt-6 text-center text-sm">',
-  "          <span class=\"text-zinc-500\">{{ isLoginMode ? 'Dont have an account?' : 'Already have an account?' }}</span>",
-  '          <button @click="toggleMode" type="button" class="text-black font-medium hover:underline ml-1 focus:outline-none">',
-  "            {{ isLoginMode ? 'Sign up' : 'Sign in' }}",
-  '          </button>',
-  '        </div>',
-  '      </div>',
-  '    </div>',
-  '  </div>',
-  '</template>'
+  '})'
 ].join('\n')
-fs.writeFileSync(path.join(process.cwd(), 'app/pages/sign-in.vue'), signInContent, 'utf8')
 
-// 8. GÜNCEL DASHBOARD SAYFASI
-const dashboardContent = [
+// 3. PROJE KAYDETME (SAVE) API'Sİ
+const saveProjectApi = [
+  "import { PrismaClient } from '@prisma/client'",
+  'const prisma = new PrismaClient()',
+  'export default defineEventHandler(async (event) => {',
+  "  const userId = getCookie(event, 'auth_token')",
+  "  if(!userId) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })",
+  '  const body = await readBody(event)',
+  '  const { projectId } = body',
+  '  if(!projectId) throw createError({ statusCode: 400 })',
+  '  const existing = await prisma.savedProject.findUnique({',
+  '    where: { userId_projectId: { userId, projectId } }',
+  '  })',
+  '  if(existing) {',
+  '    await prisma.savedProject.delete({ where: { id: existing.id } })',
+  "    return { saved: false, message: 'Removed' }",
+  '  } else {',
+  '    await prisma.savedProject.create({ data: { userId, projectId } })',
+  "    return { saved: true, message: 'Saved' }",
+  '  }',
+  '})'
+].join('\n')
+
+// 4. TICKET (DESTEK) GONDERME API'Sİ
+const createTicketApi = [
+  "import { PrismaClient } from '@prisma/client'",
+  'const prisma = new PrismaClient()',
+  'export default defineEventHandler(async (event) => {',
+  "  const userId = getCookie(event, 'auth_token')",
+  "  if(!userId) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })",
+  '  const body = await readBody(event)',
+  '  const { subject, message } = body',
+  '  const ticket = await prisma.ticket.create({',
+  '    data: { subject, message, userId }',
+  '  })',
+  '  return ticket',
+  '})'
+].join('\n')
+
+const apiDirUser = path.join(process.cwd(), 'server/api/user')
+const apiDirProjects = path.join(process.cwd(), 'server/api/projects')
+const apiDirTickets = path.join(process.cwd(), 'server/api/tickets')
+
+if (!fs.existsSync(apiDirUser)) fs.mkdirSync(apiDirUser, { recursive: true })
+if (!fs.existsSync(apiDirProjects)) fs.mkdirSync(apiDirProjects, { recursive: true })
+if (!fs.existsSync(apiDirTickets)) fs.mkdirSync(apiDirTickets, { recursive: true })
+
+fs.writeFileSync(path.join(apiDirUser, 'dashboard.get.ts'), dashboardApi, 'utf8')
+fs.writeFileSync(path.join(apiDirProjects, 'save.post.ts'), saveProjectApi, 'utf8')
+fs.writeFileSync(path.join(apiDirTickets, 'index.post.ts'), createTicketApi, 'utf8')
+
+// 5. GUNCEL DASHBOARD SAYFASI (app/pages/dashboard.vue)
+const dashboardPage = [
   '<script setup lang="ts">',
-  "const { data: user, pending } = await useFetch('/api/auth/me')",
-  '// Eger kullanici yoksa ana sayfaya at',
-  'if (!pending.value && !user.value) {',
-  "  if (typeof window !== 'undefined') window.location.href = '/sign-in'",
-  '}',
+  "useSeoMeta({ title: 'My Dashboard' })",
+  "const { data: user, pending: userPending } = await useFetch('/api/auth/me')",
+  "if (!userPending.value && !user.value) { if (typeof window !== 'undefined') window.location.href = '/sign-in' }",
+  "const { data: dashboardData, pending: dashPending } = await useFetch('/api/user/dashboard')",
   'const handleLogout = async () => {',
   "  await $fetch('/api/auth/logout', { method: 'POST' })",
   "  window.location.href = '/'",
+  '}',
+  'const formatDate = (dateString: string) => {',
+  "  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })",
   '}',
   '</script>',
   '<template>',
@@ -206,7 +156,7 @@ const dashboardContent = [
   '      <div class="flex justify-between items-end mb-10 border-b border-zinc-200 pb-6">',
   '        <div>',
   '          <h1 class="text-3xl font-bold text-black tracking-tight">Dashboard</h1>',
-  '          <p class="text-zinc-500 mt-1">Welcome back, {{ user.name }}. Manage your items here.</p>',
+  '          <p class="text-zinc-500 mt-1">Welcome back, {{ user.name }}. Manage your saved items and tickets here.</p>',
   '          <div v-if="user.role === \'ADMIN\'" class="mt-4">',
   '            <NuxtLink to="/admin" class="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wide border border-indigo-100 hover:bg-indigo-100 transition-colors">',
   '              Go to Admin Panel ->',
@@ -217,40 +167,185 @@ const dashboardContent = [
   '          Log Out',
   '        </button>',
   '      </div>',
-  '      <div class="text-zinc-500">Biletleriniz ve Favorileriniz buraya gelecek (Asama 3)...</div>',
+  '      <div v-if="dashPending" class="animate-pulse text-zinc-400">Loading your dashboard data...</div>',
+  '      <div v-else class="grid grid-cols-1 lg:grid-cols-3 gap-10">',
+  '        ',
+  '        <div class="lg:col-span-2">',
+  '          <h2 class="text-xl font-semibold mb-6 text-black">Saved Inspirations ({{ dashboardData?.savedProjects?.length || 0 }})</h2>',
+  '          <div v-if="dashboardData?.savedProjects?.length === 0" class="p-8 bg-white rounded-2xl border border-zinc-200 text-zinc-500 text-center">',
+  "            You haven't saved any projects yet. Browse the homepage and bookmark your favorites!",
+  '          </div>',
+  '          <div v-else class="grid grid-cols-1 sm:grid-cols-2 gap-6">',
+  '            <div v-for="proj in dashboardData.savedProjects" :key="proj.id" class="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm flex flex-col gap-4 group cursor-pointer">',
+  '              <div class="w-full aspect-video rounded-xl bg-zinc-100 overflow-hidden relative">',
+  '                <video :src="proj.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"></video>',
+  '              </div>',
+  '              <div>',
+  '                <h3 class="font-medium text-black">{{ proj.title }}</h3>',
+  '                <p class="text-sm text-zinc-500">{{ proj.categories }}</p>',
+  '              </div>',
+  '            </div>',
+  '          </div>',
+  '        </div>',
+  '        ',
+  '        <div>',
+  '          <div class="flex justify-between items-center mb-6">',
+  '            <h2 class="text-xl font-semibold text-black">My Tickets</h2>',
+  '            <NuxtLink to="/ticket" class="text-sm text-blue-600 hover:underline">New Ticket</NuxtLink>',
+  '          </div>',
+  '          <div v-if="dashboardData?.tickets?.length === 0" class="p-6 bg-white rounded-2xl border border-zinc-200 text-zinc-500 text-center text-sm">',
+  '            No support tickets found.',
+  '          </div>',
+  '          <div v-else class="bg-white border border-zinc-200 rounded-2xl overflow-hidden shadow-sm">',
+  '            <div v-for="ticket in dashboardData.tickets" :key="ticket.id" class="p-5 border-b border-zinc-100 last:border-0 hover:bg-zinc-50 transition-colors cursor-pointer">',
+  '              <div class="flex justify-between items-start mb-2">',
+  '                <span class="text-xs font-mono text-zinc-400">ID: {{ ticket.id.substring(0,8) }}</span>',
+  "                <span :class=\"ticket.status === 'OPEN' ? 'bg-amber-100 text-amber-700' : 'bg-zinc-100 text-zinc-500'\" class=\"px-2 py-0.5 rounded text-[10px] font-bold tracking-wider uppercase\">",
+  '                  {{ ticket.status }}',
+  '                </span>',
+  '              </div>',
+  '              <h3 class="font-medium text-black text-sm mb-1">{{ ticket.subject }}</h3>',
+  '              <p class="text-xs text-zinc-500">{{ formatDate(ticket.createdAt) }}</p>',
+  '            </div>',
+  '          </div>',
+  '        </div>',
+  '      </div>',
   '    </div>',
   '  </div>',
   '</template>'
 ].join('\n')
-fs.writeFileSync(path.join(process.cwd(), 'app/pages/dashboard.vue'), dashboardContent, 'utf8')
+fs.writeFileSync(path.join(process.cwd(), 'app/pages/dashboard.vue'), dashboardPage, 'utf8')
 
-// 9. HEADER GUNCELLEMESI
-const headerContent = [
+// 6. GUNCEL TICKET SAYFASI (app/pages/ticket.vue)
+const ticketPage = [
   '<script setup lang="ts">',
   "import { ref } from 'vue'",
-  'const isAboutOpen = ref(false)',
+  "useSeoMeta({ title: 'Support & FAQ' })",
   "const { data: user } = await useFetch('/api/auth/me')",
+  'const faqs = [',
+  "  { q: 'What is Inspo Clone?', a: 'It is a curated library of website inspirations and components.' },",
+  "  { q: 'How can I submit a component?', a: 'You can submit your own component via the Submit link in the footer.' },",
+  "  { q: 'How do I save projects?', a: 'Just click the Save button on any project modal. You need to be logged in.' }",
+  ']',
+  'const activeFaq = ref<number | null>(0)',
+  'const toggleFaq = (index: number) => activeFaq.value = activeFaq.value === index ? null : index',
+  "const form = ref({ subject: '', message: '' })",
+  'const isSubmitting = ref(false)',
+  "const successMsg = ref('')",
+  'const submitTicket = async () => {',
+  "  if (!user.value) { alert('You need to sign in to submit a ticket.'); window.location.href = '/sign-in'; return; }",
+  '  isSubmitting.value = true;',
+  '  try {',
+  "    await $fetch('/api/tickets', { method: 'POST', body: form.value })",
+  "    successMsg.value = 'Ticket submitted successfully! We will get back to you soon.'",
+  "    form.value = { subject: '', message: '' }",
+  "  } catch (error) { alert('Failed to submit ticket.') }",
+  '  finally { isSubmitting.value = false }',
+  '}',
   '</script>',
   '<template>',
-  '  <div class="min-h-screen bg-white font-sans flex flex-col">',
-  '    <header class="absolute top-0 w-full z-50 px-5 md:px-6 py-5 flex items-center justify-end pointer-events-none">',
-  '      <div class="flex items-center gap-3 pointer-events-auto text-[13px] font-medium">',
-  '        <NuxtLink to="/ticket" class="bg-[#1f1f1f] hover:bg-[#2a2a2a] text-zinc-300 transition-colors px-3 py-1.5 rounded-full flex items-center gap-2">',
-  '          Feedback <span class="opacity-50 font-mono text-[10px] border border-zinc-600 rounded-full w-3.5 h-3.5 flex items-center justify-center">?</span>',
-  '        </NuxtLink>',
-  '        <button @click="isAboutOpen = true" class="bg-[#1f1f1f] hover:bg-[#2a2a2a] text-zinc-300 transition-colors px-3 py-1.5 rounded-full flex items-center gap-2">',
-  '          About <span class="text-[9px] bg-zinc-600 text-white px-1.5 py-0.5 rounded uppercase tracking-widest">New</span>',
-  '        </button>',
-  '        <NuxtLink v-if="user" to="/dashboard" class="bg-indigo-600 hover:bg-indigo-700 text-white transition-colors px-4 py-1.5 rounded-full shadow-sm">Dashboard</NuxtLink>',
-  '        <NuxtLink v-else to="/sign-in" class="bg-white hover:bg-zinc-200 text-black transition-colors px-4 py-1.5 rounded-full shadow-sm border border-zinc-200">Sign in</NuxtLink>',
+  '  <div class="max-w-[1200px] mx-auto py-24 px-6">',
+  '    <div class="text-center mb-16">',
+  '      <h1 class="text-4xl md:text-5xl font-bold mb-4 tracking-tight">Help & Support</h1>',
+  '      <p class="text-zinc-500 text-lg">Find answers to common questions or reach out to us directly.</p>',
+  '    </div>',
+  '    <div class="flex flex-col lg:flex-row gap-12 lg:gap-24">',
+  '      <div class="w-full lg:w-1/2">',
+  '        <h2 class="text-2xl font-semibold mb-6">Frequently Asked Questions</h2>',
+  '        <div class="flex flex-col gap-4">',
+  '          <div v-for="(faq, i) in faqs" :key="i" class="border border-zinc-200 rounded-2xl overflow-hidden bg-zinc-50/50">',
+  '            <button @click="toggleFaq(i)" class="w-full px-6 py-5 flex justify-between items-center text-left font-medium text-black hover:bg-zinc-100 transition-colors">',
+  '              {{ faq.q }}',
+  '            </button>',
+  '            <div v-show="activeFaq === i" class="px-6 pb-5 text-zinc-600 leading-relaxed text-sm">{{ faq.a }}</div>',
+  '          </div>',
+  '        </div>',
   '      </div>',
-  '    </header>',
-  '    <main class="flex-grow"><slot /></main>',
-  '    <UiAboutModal :isOpen="isAboutOpen" @close="isAboutOpen = false" />',
+  '      <div class="w-full lg:w-1/2">',
+  '        <h2 class="text-2xl font-semibold mb-6">Submit a Ticket</h2>',
+  '        <form @submit.prevent="submitTicket" class="bg-white p-8 rounded-[2rem] border border-zinc-200 flex flex-col gap-5 shadow-xl shadow-zinc-200/50">',
+  '          <div v-if="successMsg" class="bg-emerald-50 text-emerald-600 p-4 rounded-xl text-sm border border-emerald-100">{{ successMsg }}</div>',
+  '          <div>',
+  '            <label class="block text-sm font-medium text-zinc-700 mb-2">Subject</label>',
+  '            <input v-model="form.subject" type="text" required placeholder="e.g. Account Issue" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-5 py-4 text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all" />',
+  '          </div>',
+  '          <div>',
+  '            <label class="block text-sm font-medium text-zinc-700 mb-2">Message</label>',
+  '            <textarea v-model="form.message" required rows="5" placeholder="How can we help you?" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-5 py-4 text-black focus:outline-none focus:ring-2 focus:ring-black focus:border-transparent transition-all resize-none"></textarea>',
+  '          </div>',
+  '          <button type="submit" :disabled="isSubmitting" class="w-full bg-black text-white py-4 mt-2 rounded-xl font-medium hover:bg-zinc-800 transition-colors disabled:opacity-70">',
+  "            {{ isSubmitting ? 'Sending...' : 'Send Message' }}",
+  '          </button>',
+  '        </form>',
+  '      </div>',
+  '    </div>',
   '  </div>',
   '</template>'
 ].join('\n')
-fs.writeFileSync(path.join(process.cwd(), 'app/layouts/default.vue'), headerContent, 'utf8')
+fs.writeFileSync(path.join(process.cwd(), 'app/pages/ticket.vue'), ticketPage, 'utf8')
 
-console.log('✅ Nuxt-Auth modulu basariyla SOKULUP ATILDI.')
-console.log('✅ %100 Temiz, cok kararli, Cerez (Cookie) tabanli Kendi Auth Sistemimiz kuruldu!')
+// 7. PRODUCT MODAL (SAVE BUTONU AKTİF)
+const modalContent = [
+  '<script setup lang="ts">',
+  "import { ref, watch, onUnmounted } from 'vue'",
+  'const props = defineProps<{ isOpen: boolean, item: any }>()',
+  "const emit = defineEmits(['close'])",
+  "const close = () => emit('close')",
+  "const { data: user } = await useFetch('/api/auth/me')",
+  'const isSaving = ref(false)',
+  'const saveProject = async () => {',
+  "  if (!user.value) { alert('Kaydetmek icin lutfen giris yapin!'); window.location.href = '/sign-in'; return; }",
+  '  isSaving.value = true;',
+  '  try {',
+  "    const res = await $fetch('/api/projects/save', { method: 'POST', body: { projectId: props.item.id } })",
+  "    alert(res.saved ? 'Video Dashboard paneline kaydedildi!' : 'Video favorilerden cikarildi.')",
+  "  } catch(e) { alert('Bir hata olustu.') }",
+  '  finally { isSaving.value = false }',
+  '}',
+  "watch(() => props.isOpen, (val) => { if (typeof document !== 'undefined') document.body.style.overflow = val ? 'hidden' : '' })",
+  "onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.overflow = '' })",
+  '</script>',
+  '<template>',
+  '  <Teleport to="body">',
+  '    <Transition enter-active-class="transition duration-300 ease-out" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100" leave-to-class="opacity-0">',
+  '      <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-4">',
+  '        <div class="absolute inset-0 bg-zinc-900/80 backdrop-blur-sm" @click="close"></div>',
+  '        <Transition enter-active-class="transition duration-400 ease-out delay-75" enter-from-class="opacity-0 translate-y-8 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100" leave-active-class="transition duration-200 ease-in" leave-from-class="opacity-100 translate-y-0 scale-100" leave-to-class="opacity-0 translate-y-8 scale-95">',
+  '          <div v-if="isOpen" class="relative w-full max-w-6xl bg-white rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row h-[85vh]">',
+  '            <button @click="close" class="absolute top-6 right-6 z-20 p-3 bg-black/5 hover:bg-black/10 text-black rounded-full transition-colors backdrop-blur-md">',
+  '               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+  '            </button>',
+  '            <div class="w-full md:w-2/3 bg-[#f4f4f5] p-6 md:p-12 flex items-center justify-center">',
+  '               <div class="w-full relative rounded-2xl overflow-hidden shadow-lg border border-black/5 bg-black">',
+  '                 <video autoplay loop muted playsinline class="w-full aspect-video object-cover">',
+  '                    <source :src="item?.video" type="video/mp4" />',
+  '                 </video>',
+  '               </div>',
+  '            </div>',
+  '            <div class="w-full md:w-1/3 p-8 md:p-12 flex flex-col bg-white">',
+  '               <div class="flex gap-2 mb-6">',
+  '                 <span v-for="tag in item?.tags" :key="tag" class="bg-zinc-100 text-zinc-600 px-3 py-1 rounded-full text-[11px] font-mono tracking-widest uppercase">{{ tag }}</span>',
+  '               </div>',
+  '               <h2 class="text-4xl font-medium tracking-tight text-black mb-1">{{ item?.title }}</h2>',
+  '               <p class="text-[15px] text-zinc-500 font-light mb-8">{{ item?.categories?.join(\', \') }}</p>',
+  '               <p class="text-zinc-600 leading-relaxed mb-8 text-sm">Detailed inspection of the component. Ready for your next big project.</p>',
+  '               <div class="mt-auto flex flex-col gap-4">',
+  '                 <button class="w-full bg-black text-white py-4 rounded-xl font-medium hover:bg-zinc-800 transition-colors shadow-lg shadow-black/10">Purchase Source Code</button>',
+  '                 <div class="flex gap-4">',
+  '                   <button class="flex-1 bg-zinc-100 text-black py-4 rounded-xl font-medium hover:bg-zinc-200 transition-colors">Live Demo</button>',
+  '                   <button @click="saveProject" :disabled="isSaving" class="flex-1 border border-zinc-200 text-black py-4 rounded-xl font-medium hover:bg-zinc-50 transition-colors disabled:opacity-50">',
+  "                     {{ isSaving ? 'Saving...' : 'Save to Dashboard' }}",
+  '                   </button>',
+  '                 </div>',
+  '               </div>',
+  '            </div>',
+  '          </div>',
+  '        </Transition>',
+  '      </div>',
+  '    </Transition>',
+  '  </Teleport>',
+  '</template>'
+].join('\n')
+fs.writeFileSync(path.join(process.cwd(), 'app/components/Product/Modal.vue'), modalContent, 'utf8')
+
+console.log('✅ Dashboard, Ticket ve Favori kaydetme (Save) sistemleri kuruldu!')
