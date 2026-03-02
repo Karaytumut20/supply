@@ -12,7 +12,7 @@ const isUploadModalOpen = ref(false)
 const isSubmitting = ref(false)
 const searchQuery = ref('')
 
-const newProject = ref({ title: '', description: '', videoUrl: '', sourceUrl: '', price: 0, categories: '', tags: '', techStack: '', rating: 5.0, reviewCount: 0, status: 'Active', isPremium: false, sourceCodeReact: '', sourceCodeVue: '', sourceCodeHtml: '' })
+const newProject = ref({ title: '', description: '', videoUrl: '', sourceUrl: '', demoUrl: '', dependencies: '', price: 0, categories: '', tags: '', techStack: '', rating: 5.0, reviewCount: 0, status: 'Active', isPremium: false, sourceCodeReact: '', sourceCodeVue: '', sourceCodeHtml: '' })
 
 const filteredProjects = computed(() => {
   if(!dbProjects.value) return []
@@ -128,7 +128,11 @@ const handleUpload = async () => {
           <div><label class="text-sm font-bold text-zinc-700 mb-1">Description</label><textarea v-model="newProject.description" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black"></textarea></div>
           <div class="grid grid-cols-2 gap-4">
             <div><label class="text-sm font-bold text-zinc-700 mb-1">Video URL</label><input v-model="newProject.videoUrl" type="text" required class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
-            <div><label class="text-sm font-bold text-zinc-700 mb-1">Source ZIP URL</label><input v-model="newProject.sourceUrl" type="text" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
+            <div><label class="text-sm font-bold text-zinc-700 mb-1">Live Demo URL</label><input v-model="newProject.demoUrl" type="url" placeholder="https://..." class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
+     <div><label class="text-sm font-bold text-zinc-700 mb-1">Dependencies (NPM)</label><input v-model="newProject.dependencies" type="text" placeholder="framer-motion clsx" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
+     <div><label class="text-sm font-bold text-zinc-700 mb-1">Live Demo URL</label><input v-model="newProject.demoUrl" type="url" placeholder="https://..." class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
+     <div><label class="text-sm font-bold text-zinc-700 mb-1">Dependencies (NPM)</label><input v-model="newProject.dependencies" type="text" placeholder="framer-motion clsx" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
+     <div><label class="text-sm font-bold text-zinc-700 mb-1">Source ZIP URL</label><input v-model="newProject.sourceUrl" type="text" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
           </div>
           <div class="grid grid-cols-4 gap-4">
             <div><label class="text-sm font-bold text-zinc-700 mb-1">Price ($)</label><input v-model="newProject.price" type="number" step="0.01" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>

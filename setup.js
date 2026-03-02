@@ -1,6 +1,356 @@
 import fs from 'fs'
 import path from 'path'
 
+// 1. PRISMA SCHEMA (demoUrl ve dependencies Eklendi)
+const prismaSchema = `generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String         @id @default(uuid())
+  name             String?
+  email            String         @unique
+  password         String
+  role             Role           @default(USER)
+  plan             Plan           @default(FREE)
+  isPro            Boolean        @default(false)
+  stripeCustomerId String?
+  bio              String?
+  avatar           String?
+  createdAt        DateTime       @default(now())
+
+  tickets          Ticket[]
+  savedProjects    SavedProject[]
+  purchases        Purchase[]
+  createdWorks     Project[]      @relation("AuthorProjects")
+  reviews          Review[]
+  notifications    Notification[]
+  payouts          PayoutRequest[]
+}
+
+model Project {
+  id               String         @id @default(uuid())
+  title            String
+  videoUrl         String
+  categories       String
+  tags             String?
+  status           String         @default("Active")
+  isPremium        Boolean        @default(false)
+  productType      ProductType    @default(COMPONENT)
+  price            Float          @default(0)
+  description      String?
+  techStack        String?
+  downloads        Int            @default(0)
+  rating           Float          @default(5.0)
+  reviewCount      Int            @default(0)
+  sourceUrl        String?
+
+  // YENİ EKLENENLER (MUST-HAVE ÖZELLİKLER)
+  demoUrl          String?
+  dependencies     String?
+
+  sourceCode       String?        @db.Text
+  sourceCodeReact  String?        @db.Text
+  sourceCodeVue    String?        @db.Text
+  sourceCodeHtml   String?        @db.Text
+
+  createdAt        DateTime       @default(now())
+
+  authorId         String?
+  author           User?          @relation("AuthorProjects", fields: [authorId], references: [id])
+
+  savedBy          SavedProject[]
+  purchasedBy      Purchase[]
+  reviews          Review[]
+
+  @@index([status])
+  @@index([isPremium])
+  @@index([categories])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  rating    Int
+  comment   String?  @db.Text
+  userId    String
+  projectId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, projectId])
+  @@index([projectId])
+}
+
+model Purchase {
+  id          String   @id @default(uuid())
+  userId      String
+  projectId   String
+  pricePaid   Float?   @default(0)
+  licenseType String   @default("STANDARD")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+}
+
+model SavedProject {
+  id        String   @id @default(uuid())
+  userId    String
+  projectId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+}
+
+model Ticket {
+  id        String   @id @default(uuid())
+  subject   String
+  message   String
+  status    String   @default("OPEN")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+model PayoutRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Float
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+enum ProductType {
+  COMPONENT
+  ANIMATION
+  TEMPLATE
+  EFFECT
+}`
+fs.writeFileSync(path.join(process.cwd(), 'prisma/schema.prisma'), prismaSchema, 'utf8')
+
+// 2. ADMIN API GÜNCELLEMESİ (YENİ ALANLARI KAYDETME)
+const adminPostApi = `import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+export default defineEventHandler(async (event) => {
+  const body = await readBody(event)
+  return await prisma.project.create({
+    data: {
+      title: body.title,
+      description: body.description || null,
+      videoUrl: body.videoUrl,
+      sourceUrl: body.sourceUrl || null,
+      demoUrl: body.demoUrl || null,
+      dependencies: body.dependencies || null,
+      price: parseFloat(body.price) || 0,
+      categories: body.categories,
+      tags: body.tags || 'new',
+      techStack: body.techStack || 'HTML, CSS',
+      rating: parseFloat(body.rating) || 5.0,
+      reviewCount: parseInt(body.reviewCount) || 0,
+      status: body.status || 'Active',
+      isPremium: body.isPremium || false,
+      sourceCodeReact: body.sourceCodeReact || '',
+      sourceCodeVue: body.sourceCodeVue || '',
+      sourceCodeHtml: body.sourceCodeHtml || ''
+    }
+  })
+})`
+fs.writeFileSync(
+  path.join(process.cwd(), 'server/api/admin/projects.post.ts'),
+  adminPostApi,
+  'utf8'
+)
+
+// 3. HEADER (DEFAULT.VUE) - NOTIFICATION ZİLİ DÜZELTİLDİ
+const layoutCode = `<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useToast } from '#imports'
+
+const isAboutOpen = ref(false)
+const isUserMenuOpen = ref(false)
+const isNotifMenuOpen = ref(false)
+
+const { data: user } = await useFetch('/api/auth/me')
+const { data: notifData, refresh: refreshNotifs } = await useFetch(user.value ? '/api/notifications' : '')
+const { addToast } = useToast()
+
+const handleLogout = async () => {
+  await $fetch('/api/auth/logout', { method: 'POST' })
+  addToast('Signed out successfully.', 'info')
+  setTimeout(() => { window.location.href = '/' }, 500)
+}
+
+const markAsRead = async () => {
+  if (notifData.value?.unreadCount && notifData.value.unreadCount > 0) {
+    await $fetch('/api/notifications/read', { method: 'POST' })
+    await refreshNotifs()
+  }
+}
+
+const toggleNotifs = () => {
+  isNotifMenuOpen.value = !isNotifMenuOpen.value
+  if (isNotifMenuOpen.value) {
+    isUserMenuOpen.value = false
+    markAsRead()
+  }
+}
+
+const toggleUserMenu = () => {
+  isUserMenuOpen.value = !isUserMenuOpen.value
+  if (isUserMenuOpen.value) isNotifMenuOpen.value = false
+}
+</script>
+
+<template>
+  <div class="min-h-screen bg-white font-sans flex flex-col">
+
+    <header class="fixed top-0 w-full z-50 px-5 md:px-8 py-4 flex items-center justify-between transition-all backdrop-blur-xl bg-white/70 border-b border-zinc-200/50">
+      <div class="flex items-center">
+        <NuxtLink to="/" class="font-bold text-xl tracking-tight flex items-center gap-2 group">
+          <div class="flex gap-1 transform transition-transform group-hover:scale-110">
+            <div class="w-3.5 h-3.5 rounded-full bg-blue-500"></div>
+            <div class="w-3.5 h-3.5 bg-red-500" style="clip-path: polygon(50% 0%, 0% 100%, 100% 100%);"></div>
+            <div class="w-3.5 h-3.5 bg-yellow-500"></div>
+          </div>
+          inspo<span class="text-zinc-400">.</span>
+        </NuxtLink>
+      </div>
+
+      <div class="flex items-center gap-4 sm:gap-6 text-[14px] font-medium">
+        <NuxtLink to="/ticket" class="hidden sm:flex text-zinc-500 hover:text-black transition-colors">Support</NuxtLink>
+        <button @click="isAboutOpen = true" class="hidden sm:flex text-zinc-500 hover:text-black transition-colors">About</button>
+
+        <div class="w-px h-5 bg-zinc-200 hidden sm:block mx-1"></div>
+
+        <template v-if="user">
+          <NuxtLink v-if="!user.isPro" to="/pricing" class="relative group hidden sm:flex items-center justify-center">
+             <div class="absolute inset-0 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-200"></div>
+             <span class="relative bg-white text-black px-4 py-1.5 rounded-full border border-zinc-200 text-sm font-bold flex items-center gap-1">
+               <svg class="w-4 h-4 text-purple-500" fill="currentColor" viewBox="0 0 20 20"><path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z"></path></svg>
+               Get Pro
+             </span>
+          </NuxtLink>
+
+          <div class="relative flex items-center justify-center">
+            <button @click="toggleNotifs" class="relative w-10 h-10 rounded-full bg-white border border-zinc-200 hover:bg-zinc-50 flex items-center justify-center text-zinc-600 transition-colors shadow-sm focus:outline-none">
+              <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span v-if="notifData?.unreadCount > 0" class="absolute top-0 right-0 w-3 h-3 bg-red-500 rounded-full border-2 border-white shadow-sm"></span>
+            </button>
+
+            <div v-if="isNotifMenuOpen" class="absolute right-0 top-12 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-zinc-100 z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+              <div class="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex justify-between items-center">
+                <span class="font-bold text-black text-sm">Notifications</span>
+              </div>
+              <div class="max-h-[300px] overflow-y-auto p-2 flex flex-col gap-1">
+                <div v-if="!notifData?.notifications?.length" class="p-4 text-center text-sm text-zinc-500">
+                  No new notifications.
+                </div>
+                <div v-for="notif in notifData?.notifications" :key="notif.id" :class="notif.isRead ? 'opacity-70' : 'bg-indigo-50/50'" class="p-3 rounded-xl hover:bg-zinc-50 transition-colors cursor-pointer">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="w-2 h-2 rounded-full" :class="notif.isRead ? 'bg-transparent' : 'bg-indigo-500'"></span>
+                    <h4 class="font-bold text-sm text-black">{{ notif.title }}</h4>
+                  </div>
+                  <p class="text-xs text-zinc-600 pl-4">{{ notif.message }}</p>
+                  <p class="text-[10px] text-zinc-400 pl-4 mt-1">{{ new Date(notif.createdAt).toLocaleDateString() }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative flex items-center justify-center">
+            <button @click="toggleUserMenu" class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold flex items-center justify-center shadow-md border-2 border-white ring-2 ring-transparent hover:ring-indigo-100 transition-all">
+              {{ user.name?.charAt(0).toUpperCase() || 'U' }}
+            </button>
+
+            <div v-if="isUserMenuOpen" class="absolute right-0 top-12 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-zinc-100 z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+              <div class="px-5 py-4 border-b border-zinc-100 bg-zinc-50/50">
+                <p class="text-sm font-bold text-black truncate">{{ user.name }}</p>
+                <p class="text-xs text-zinc-500 truncate">{{ user.email }}</p>
+              </div>
+              <div class="p-2 flex flex-col gap-1">
+                <NuxtLink to="/dashboard" @click="isUserMenuOpen = false" class="px-3 py-2 text-sm text-zinc-700 hover:bg-zinc-100 rounded-lg transition-colors flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zm10 0a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                  My Library
+                </NuxtLink>
+              </div>
+              <div class="p-2 border-t border-zinc-100">
+                <button @click="handleLogout" class="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                  Sign Out
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <NuxtLink v-else to="/sign-in" class="bg-black hover:bg-zinc-800 text-white transition-colors px-6 py-2.5 rounded-full shadow-lg shadow-black/10">
+          Sign In
+        </NuxtLink>
+      </div>
+    </header>
+
+    <div v-if="isUserMenuOpen || isNotifMenuOpen" @click="isUserMenuOpen=false; isNotifMenuOpen=false" class="fixed inset-0 z-40"></div>
+
+    <main class="flex-grow pt-[72px] relative z-10"><slot /></main>
+    <UiAboutModal :isOpen="isAboutOpen" @close="isAboutOpen = false" />
+    <UiToast />
+  </div>
+</template>`
+fs.writeFileSync(path.join(process.cwd(), 'app/layouts/default.vue'), layoutCode, 'utf8')
+
+// 4. KUSURSUZ PRODUCT MODAL (Çakışma Çözüldü & Dependencies Eklendi)
 const productModalCode = `<script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useToast } from '#imports'
@@ -37,33 +387,36 @@ const buyItem = async () => {
   if(!user.value) { addToast('Lütfen giriş yapın.', 'error'); window.location.href = '/sign-in'; return; }
   isProcessing.value = true;
   try {
-    const res = await $fetch('/api/projects/purchase', {
-      method: 'POST',
-      body: { projectId: props.item.id, licenseType: selectedLicense.value }
-    })
+    const res = await $fetch('/api/projects/purchase', { method: 'POST', body: { projectId: props.item.id, licenseType: selectedLicense.value } })
     await refreshUser();
-    addToast('Ödeme başarılı! Kaynak kodlara artık erişebilirsiniz.', 'success')
+    addToast('Ödeme başarılı! Kaynak kodlara erişebilirsiniz.', 'success')
     activeTab.value = 'code'
   } catch(e: any) { addToast(e.data?.statusMessage || 'Satın alma hatası', 'error') }
   finally { isProcessing.value = false }
 }
 
 const currentCode = computed(() => {
-  if (activeFramework.value === 'react') return props.item?.sourceCodeReact || props.item?.sourceCode || '// React code not provided.'
-  if (activeFramework.value === 'vue') return props.item?.sourceCodeVue || props.item?.sourceCode || ''
-  if (activeFramework.value === 'html') return props.item?.sourceCodeHtml || props.item?.sourceCode || ''
+  if (activeFramework.value === 'react') return props.item?.sourceCodeReact || '// React code not provided.'
+  if (activeFramework.value === 'vue') return props.item?.sourceCodeVue || ''
+  if (activeFramework.value === 'html') return props.item?.sourceCodeHtml || ''
   return ''
 })
 
 const copyCode = async () => {
   await navigator.clipboard.writeText(currentCode.value)
-  addToast(\`\${activeFramework.value.toUpperCase()} Code copied to clipboard!\`, 'success')
+  addToast(\`\${activeFramework.value.toUpperCase()} kodu kopyalandı!\`, 'success')
+}
+
+const copyDeps = async () => {
+  if(!props.item?.dependencies) return;
+  await navigator.clipboard.writeText(\`npm install \${props.item.dependencies}\`)
+  addToast('Kurulum komutu kopyalandı!', 'success')
 }
 
 const shareLink = async () => {
   const url = \`\${window.location.origin}/item/\${props.item.id}\`
   await navigator.clipboard.writeText(url)
-  addToast('Link copied! You can share this item now.', 'info')
+  addToast('Bağlantı kopyalandı.', 'info')
 }
 
 const displayCategories = computed(() => {
@@ -82,12 +435,13 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
   <Teleport to="body">
     <Transition enter-active-class="transition duration-500 ease-out" enter-from-class="opacity-0" leave-to-class="opacity-0">
       <div v-if="isOpen" class="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 lg:p-8">
+
         <div class="absolute inset-0 bg-black/80 backdrop-blur-2xl transition-opacity" @click="close"></div>
 
         <Transition enter-active-class="transition duration-700 ease-out delay-75" enter-from-class="opacity-0 translate-y-16 scale-95" enter-to-class="opacity-100 translate-y-0 scale-100">
           <div v-if="isOpen" class="relative w-full max-w-[1300px] h-full md:h-[90vh] lg:h-[85vh] bg-white md:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col lg:flex-row border border-white/20">
 
-            <button @click="close" class="absolute top-6 right-6 z-50 p-3.5 bg-white/20 hover:bg-white/80 backdrop-blur-xl text-black rounded-full transition-all shadow-lg border border-black/10 group">
+            <button @click="close" class="absolute top-4 right-4 md:top-6 md:right-6 z-50 p-3 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 hover:text-black rounded-full transition-all shadow-sm border border-zinc-200 group focus:outline-none">
                <svg class="transform group-hover:rotate-90 transition-transform duration-500" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
             </button>
 
@@ -95,7 +449,7 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 40px 40px;"></div>
                <div class="absolute -top-[20%] -left-[10%] w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] pointer-events-none"></div>
                <div class="w-full h-full relative flex flex-col items-center justify-center p-6 lg:p-12">
-                 <div class="w-full max-w-4xl relative rounded-[1.5rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.4)] ring-1 ring-white/10 group cursor-pointer" @click="hasAccess ? activeTab='code' : null">
+                 <div class="w-full max-w-4xl relative rounded-[1.5rem] overflow-hidden shadow-[0_0_80px_rgba(0,0,0,0.4)] ring-1 ring-white/10 group">
                    <video :src="item?.video || item?.videoUrl" autoplay loop muted playsinline class="w-full aspect-video md:aspect-[16/10] object-cover"></video>
                  </div>
                </div>
@@ -103,14 +457,21 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
 
             <div class="w-full lg:w-[45%] flex flex-col bg-white relative h-[55vh] lg:h-full">
 
-               <div class="flex items-center justify-between border-b border-zinc-200 px-8 pt-6 pb-0 gap-6">
-                 <div class="flex gap-6">
+               <div class="flex items-center justify-between border-b border-zinc-200 pl-8 pr-20 md:pr-24 pt-6 pb-0 gap-4 shrink-0">
+                 <div class="flex gap-4 sm:gap-6">
                     <button @click="activeTab = 'overview'" :class="activeTab === 'overview' ? 'text-black border-black' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-4 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors">Overview</button>
                     <button @click="activeTab = 'code'" :class="activeTab === 'code' ? 'text-black border-black' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-4 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors">Source Code</button>
                  </div>
-                 <button @click="shareLink" class="pb-4 text-xs font-bold text-zinc-400 hover:text-black flex items-center gap-1.5 transition-colors">
-                   <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share
-                 </button>
+
+                 <div class="flex items-center gap-4">
+                   <a v-if="item?.demoUrl" :href="item.demoUrl" target="_blank" class="pb-4 text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors">
+                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> Live Demo
+                   </a>
+
+                   <button @click="shareLink" class="pb-4 text-xs font-bold text-zinc-400 hover:text-black flex items-center gap-1.5 transition-colors">
+                     <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Share
+                   </button>
+                 </div>
                </div>
 
                <div class="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar bg-[#fafafa]">
@@ -121,7 +482,6 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
 
                      <div v-if="!hasAccess && !isFree" class="space-y-3 mb-8">
                        <h4 class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Select License</h4>
-
                        <div @click="selectedLicense = 'STANDARD'" :class="selectedLicense === 'STANDARD' ? 'border-black bg-zinc-50' : 'border-zinc-200 bg-white'" class="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:border-zinc-300 relative">
                          <div class="flex justify-between items-center mb-1">
                            <h5 class="font-bold text-black">Standard License</h5>
@@ -150,23 +510,33 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                            </div>
                            <h4 class="font-bold text-xl mb-2 text-black">Premium Content</h4>
-                           <p class="text-sm text-zinc-600 mb-6">Upgrade to PRO or purchase this item to unlock.</p>
+                           <p class="text-sm text-zinc-600 mb-6">Upgrade to PRO or purchase this item to unlock the React, Vue, and HTML source codes.</p>
                         </div>
                       </div>
 
-                      <div v-else class="bg-[#0d0d0d] rounded-2xl border border-zinc-800 overflow-hidden shadow-2xl flex flex-col flex-1 min-h-[300px]">
-                        <div class="flex items-center justify-between px-4 pt-2 bg-[#141414] border-b border-zinc-800 shrink-0">
-                          <div class="flex gap-1">
-                            <button @click="activeFramework = 'react'" :class="activeFramework === 'react' ? 'bg-[#1e1e1e] text-[#61dafb] border-t-2 border-t-[#61dafb]' : 'text-zinc-500 hover:text-zinc-300 border-t-2 border-t-transparent'" class="px-4 py-2 text-xs font-bold font-mono rounded-t-lg transition-colors">React</button>
-                            <button @click="activeFramework = 'vue'" :class="activeFramework === 'vue' ? 'bg-[#1e1e1e] text-[#41b883] border-t-2 border-t-[#41b883]' : 'text-zinc-500 hover:text-zinc-300 border-t-2 border-t-transparent'" class="px-4 py-2 text-xs font-bold font-mono rounded-t-lg transition-colors">Vue</button>
-                            <button @click="activeFramework = 'html'" :class="activeFramework === 'html' ? 'bg-[#1e1e1e] text-[#e34f26] border-t-2 border-t-[#e34f26]' : 'text-zinc-500 hover:text-zinc-300 border-t-2 border-t-transparent'" class="px-4 py-2 text-xs font-bold font-mono rounded-t-lg transition-colors">HTML</button>
+                      <div v-else class="flex flex-col h-full gap-4">
+                        <div v-if="item?.dependencies" class="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm shrink-0">
+                          <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-2">1. Install Dependencies</p>
+                          <div class="flex items-center justify-between bg-[#f4f4f5] p-3 rounded-xl">
+                            <code class="text-xs font-mono text-pink-600 font-medium select-all">npm i {{ item.dependencies }}</code>
+                            <button @click="copyDeps" class="text-xs font-bold text-zinc-500 hover:text-black">Copy</button>
                           </div>
-                          <button @click="copyCode" class="text-xs font-semibold text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-md mb-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Copy Code
-                          </button>
                         </div>
-                        <div class="p-6 overflow-y-auto text-[13px] font-mono leading-relaxed text-zinc-300 whitespace-pre-wrap flex-1 custom-scrollbar">
-                           {{ currentCode }}
+
+                        <div class="bg-[#0d0d0d] rounded-2xl border border-zinc-800 overflow-hidden shadow-2xl flex flex-col flex-1 min-h-[300px]">
+                          <div class="flex items-center justify-between px-4 pt-2 bg-[#141414] border-b border-zinc-800 shrink-0">
+                            <div class="flex gap-1">
+                              <button @click="activeFramework = 'react'" :class="activeFramework === 'react' ? 'bg-[#1e1e1e] text-[#61dafb] border-t-2 border-t-[#61dafb]' : 'text-zinc-500 hover:text-zinc-300 border-t-2 border-t-transparent'" class="px-4 py-2 text-xs font-bold font-mono rounded-t-lg transition-colors">React</button>
+                              <button @click="activeFramework = 'vue'" :class="activeFramework === 'vue' ? 'bg-[#1e1e1e] text-[#41b883] border-t-2 border-t-[#41b883]' : 'text-zinc-500 hover:text-zinc-300 border-t-2 border-t-transparent'" class="px-4 py-2 text-xs font-bold font-mono rounded-t-lg transition-colors">Vue</button>
+                              <button @click="activeFramework = 'html'" :class="activeFramework === 'html' ? 'bg-[#1e1e1e] text-[#e34f26] border-t-2 border-t-[#e34f26]' : 'text-zinc-500 hover:text-zinc-300 border-t-2 border-t-transparent'" class="px-4 py-2 text-xs font-bold font-mono rounded-t-lg transition-colors">HTML</button>
+                            </div>
+                            <button @click="copyCode" class="text-xs font-semibold text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-md mb-1">
+                              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Copy
+                            </button>
+                          </div>
+                          <div class="p-6 overflow-y-auto text-[13px] font-mono leading-relaxed text-zinc-300 whitespace-pre-wrap flex-1 custom-scrollbar">
+                             {{ currentCode }}
+                          </div>
                         </div>
                       </div>
                    </div>
@@ -175,7 +545,7 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                <div class="p-6 bg-white border-t border-zinc-200 shadow-[0_-15px_40px_rgba(0,0,0,0.06)] relative z-30 shrink-0">
                  <div v-if="hasAccess">
                    <button @click="activeTab='code'" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-[56px] rounded-xl font-bold shadow-xl flex justify-center items-center gap-2 text-[15px] transition-transform active:scale-95">
-                     View Source Code
+                     <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> View Source Code
                    </button>
                  </div>
                  <div v-else>
@@ -199,13 +569,26 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
 </style>`
-
 fs.writeFileSync(
   path.join(process.cwd(), 'app/components/Product/Modal.vue'),
   productModalCode,
   'utf8'
 )
 
+// 5. ADMIN PANELİ GÜNCELLEMESİ (YENİ ALANLAR FORM'A EKLENDİ)
+const adminPageUpdated = fs
+  .readFileSync(path.join(process.cwd(), 'app/pages/admin/index.vue'), 'utf8')
+  .replace(
+    '<div><label class="text-sm font-bold text-zinc-700 mb-1">Source ZIP URL</label><input v-model="newProject.sourceUrl"',
+    `<div><label class="text-sm font-bold text-zinc-700 mb-1">Live Demo URL</label><input v-model="newProject.demoUrl" type="url" placeholder="https://..." class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
+     <div><label class="text-sm font-bold text-zinc-700 mb-1">Dependencies (NPM)</label><input v-model="newProject.dependencies" type="text" placeholder="framer-motion clsx" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 outline-none focus:border-black" /></div>
+     <div><label class="text-sm font-bold text-zinc-700 mb-1">Source ZIP URL</label><input v-model="newProject.sourceUrl"`
+  )
+  .replace("sourceUrl: '', price: 0", "sourceUrl: '', demoUrl: '', dependencies: '', price: 0")
+fs.writeFileSync(path.join(process.cwd(), 'app/pages/admin/index.vue'), adminPageUpdated, 'utf8')
+
+console.log('✅ Modal UI çakışmaları çözüldü, Notification zili düzeltildi.')
 console.log(
-  '✅ Hata tamamen giderildi! HTML etiketleri düzeltildi ve Modal sıfırdan güvenle yazıldı.'
+  '✅ Must-Have: Dependencies (Kurulum) Bloğu ve Canlı Demo (Live Preview) Butonu eklendi!'
 )
+console.log('⚠️ Yeni alanlar için terminalde: npx prisma db push')

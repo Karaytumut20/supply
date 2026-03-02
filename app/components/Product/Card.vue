@@ -23,6 +23,22 @@ const techList = computed(() => {
   return props.item.techStack.split(',').map((t:string)=>t.trim()).slice(0, 2)
 })
 
+const isNew = computed(() => {
+  if (!props.item.createdAt) return false
+  const age = Date.now() - new Date(props.item.createdAt).getTime()
+  return age < 7 * 24 * 60 * 60 * 1000 // 7 days
+})
+
+const techColor = (tech: string) => {
+  const t = tech.toLowerCase()
+  if (t.includes('gsap')) return 'bg-green-50 text-green-700 border-green-200'
+  if (t.includes('three')) return 'bg-blue-50 text-blue-700 border-blue-200'
+  if (t.includes('react')) return 'bg-cyan-50 text-cyan-700 border-cyan-200'
+  if (t.includes('vue')) return 'bg-emerald-50 text-emerald-700 border-emerald-200'
+  if (t.includes('webgl')) return 'bg-purple-50 text-purple-700 border-purple-200'
+  return 'bg-zinc-100 text-zinc-600 border-zinc-200'
+}
+
 const isSaving = ref(false)
 const quickSave = async (e: Event) => {
   e.stopPropagation()
@@ -39,7 +55,11 @@ const quickSave = async (e: Event) => {
 <template>
   <div class="group flex flex-col cursor-pointer" @click="emit('open', item)">
     <div class="relative w-full aspect-[4/4.2] bg-[#f4f4f5] rounded-[32px] flex items-center justify-center p-6 sm:p-8 overflow-hidden transition-colors duration-300 group-hover:bg-[#ebebec]">
-      <button @click="quickSave" class="absolute top-5 left-5 z-30 w-9 h-9 bg-white/90 backdrop-blur-md hover:bg-white text-zinc-400 hover:text-red-500 rounded-full shadow-sm border border-zinc-200/50 flex items-center justify-center transition-all active:scale-90" :disabled="isSaving">
+      <!-- NEW badge -->
+      <div v-if="isNew" class="absolute top-5 left-5 z-30">
+        <span class="bg-emerald-500 text-white px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest shadow-md">NEW</span>
+      </div>
+      <button v-else @click="quickSave" class="absolute top-5 left-5 z-30 w-9 h-9 bg-white/90 backdrop-blur-md hover:bg-white text-zinc-400 hover:text-red-500 rounded-full shadow-sm border border-zinc-200/50 flex items-center justify-center transition-all active:scale-90" :disabled="isSaving">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
       </button>
 
@@ -59,12 +79,16 @@ const quickSave = async (e: Event) => {
     </div>
 
     <div class="flex justify-between items-start px-2 mt-4">
-      <div class="flex flex-col">
-        <h3 class="text-[17px] font-medium text-zinc-900 leading-tight group-hover:text-black transition-colors">{{ item.title }}</h3>
+      <div class="flex flex-col min-w-0 flex-1">
+        <h3 class="text-[17px] font-medium text-zinc-900 leading-tight group-hover:text-black transition-colors truncate">{{ item.title }}</h3>
         <div class="flex items-center gap-2 mt-1 text-[13px] text-zinc-500">
           <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> {{ item.downloads || 0 }}</span>
           <span>•</span>
-          <span class="truncate max-w-[120px]">{{ displayCategory }}</span>
+          <span class="truncate max-w-[100px]">{{ displayCategory }}</span>
+        </div>
+        <!-- Tech badges -->
+        <div v-if="techList.length" class="flex gap-1.5 mt-2 flex-wrap">
+          <span v-for="tech in techList" :key="tech" :class="techColor(tech)" class="px-2 py-0.5 rounded-full text-[10px] font-bold border">{{ tech }}</span>
         </div>
       </div>
     </div>

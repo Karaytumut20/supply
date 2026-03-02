@@ -26,7 +26,7 @@ model User {
   createdWorks     Project[]      @relation("AuthorProjects")
   reviews          Review[]
   notifications    Notification[]
-  payouts          PayoutRequest[] // YENI: Para çekme talepleri
+  payouts          PayoutRequest[]
 }
 
 model Project {
@@ -45,6 +45,10 @@ model Project {
   rating           Float          @default(5.0)
   reviewCount      Int            @default(0)
   sourceUrl        String?
+
+  // YENİ EKLENENLER (MUST-HAVE ÖZELLİKLER)
+  demoUrl          String?
+  dependencies     String?
 
   sourceCode       String?        @db.Text
   sourceCodeReact  String?        @db.Text
@@ -140,12 +144,11 @@ model Notification {
   @@index([isRead])
 }
 
-// YENİ: Para Çekme (Payout) Tablosu
 model PayoutRequest {
   id        String   @id @default(uuid())
   userId    String
   amount    Float
-  status    String   @default("PENDING") // PENDING, COMPLETED, REJECTED
+  status    String   @default("PENDING")
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
