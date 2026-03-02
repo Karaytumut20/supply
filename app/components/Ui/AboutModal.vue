@@ -1,9 +1,17 @@
 <script setup lang="ts">
 import { watch, onUnmounted } from 'vue'
 
-const props = defineProps<{ isOpen: boolean }>()
+const props = defineProps<{ isOpen: boolean; user?: any }>()
 const emit = defineEmits(['close'])
 const close = () => emit('close')
+
+const startBrowsing = () => {
+  close()
+  setTimeout(() => {
+    // Scroll down to the content gracefully
+    window.scrollTo({ top: window.innerHeight * 0.8, behavior: 'smooth' })
+  }, 100)
+}
 
 watch(() => props.isOpen, (val) => {
   if (typeof document !== 'undefined') document.body.style.overflow = val ? 'hidden' : ''
@@ -43,8 +51,8 @@ onUnmounted(() => {
             </div>
 
             <div class="mt-10 flex gap-4 reveal-text delay-250">
-              <button @click="close" class="bg-black text-white px-8 py-3.5 rounded-xl font-medium hover:bg-zinc-800 transition-colors focus:ring-4 focus:ring-zinc-300">Start Browsing</button>
-              <NuxtLink to="/sign-in" class="bg-zinc-100 text-black px-8 py-3.5 rounded-xl font-medium hover:bg-zinc-200 transition-colors focus:ring-4 focus:ring-zinc-300" @click="close">Sign In</NuxtLink>
+              <button @click="startBrowsing" class="bg-black text-white px-8 py-3.5 rounded-xl font-medium hover:bg-zinc-800 transition-colors focus:ring-4 focus:ring-zinc-300">Start Browsing</button>
+              <NuxtLink v-if="!user" to="/sign-in" class="bg-zinc-100 text-black px-8 py-3.5 rounded-xl font-medium hover:bg-zinc-200 transition-colors focus:ring-4 focus:ring-zinc-300" @click="close">Sign In</NuxtLink>
             </div>
 
           </div>
