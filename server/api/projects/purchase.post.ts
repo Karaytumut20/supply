@@ -1,9 +1,10 @@
 import { PrismaClient } from '@prisma/client'
+import { requireAuth } from '../../utils/jwt'
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-  const userId = getCookie(event, 'auth_token')
-  if(!userId) throw createError({ statusCode: 401, statusMessage: 'Lütfen giriş yapın.' })
+  const user = await requireAuth(event)
+  const userId = user.userId
 
   const body = await readBody(event)
   const { projectId } = body
@@ -16,7 +17,6 @@ export default defineEventHandler(async (event) => {
   })
   if(existing) throw createError({ statusCode: 400, statusMessage: 'Bu ürüne zaten sahipsiniz.' })
 
-  // Satın almayı kaydet ve projenin indirme sayısını 1 artır
   const purchase = await prisma.$transaction([
     prisma.purchase.create({ data: { userId, projectId, pricePaid: project.price } }),
     prisma.project.update({ where: { id: projectId }, data: { downloads: { increment: 1 } } })

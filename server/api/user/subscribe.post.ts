@@ -1,9 +1,15 @@
 import { PrismaClient } from '@prisma/client'
+import { requireAuth } from '../../utils/jwt'
 const prisma = new PrismaClient()
+
 export default defineEventHandler(async (event) => {
-  const userId = getCookie(event, 'auth_token')
-  if(!userId) throw createError({ statusCode: 401 })
-  // Gercek projede odeme basariliysa PRO yapilir.
-  await prisma.user.update({ where: { id: userId }, data: { plan: 'PRO' } })
-  return { success: true, message: 'Abonelik basarili! Artik PRO uyesiniz.' }
+  const user = await requireAuth(event)
+  const userId = user.userId
+
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { isPro: true, plan: 'PRO' }
+  })
+
+  return { success: true, message: 'Hoş geldin! Artık Pro üyesin.' }
 })

@@ -1,11 +1,22 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useToast } from '#imports'
+import { navigateTo } from '#app'
 
 useSeoMeta({ title: 'My Dashboard' })
 const { addToast } = useToast()
+
+// 1. Kullanıcı oturumunu kontrol et
 const { data: user } = await useFetch('/api/auth/me')
-const { data: dashboardData, pending } = await useFetch('/api/user/dashboard')
+
+// 2. KULLANICI YOKSA ANINDA GİRİŞ SAYFASINA YÖNLENDİR (BUG FİX BURADA)
+if (!user.value) {
+  await navigateTo('/sign-in')
+}
+
+// 3. Kullanıcı varsa verileri çek (Yoksa boşuna API'yi yormamak için URL'yi boş bırakıyoruz)
+const { data: dashboardData, pending } = await useFetch(user.value ? '/api/user/dashboard' : '')
+
 const activeTab = ref('Purchases')
 
 const handleLogout = async () => {
@@ -16,8 +27,8 @@ const handleLogout = async () => {
 </script>
 
 <template>
-  <div v-if="user" class="min-h-screen bg-[#fafafa] pt-24 pb-12 px-6">
-    <div class="max-w-[1200px] mx-auto">
+  <div class="min-h-screen bg-[#fafafa] pt-24 pb-12 px-6">
+    <div v-if="user" class="max-w-[1200px] mx-auto">
 
       <div class="flex flex-col md:flex-row md:justify-between md:items-end mb-10 border-b border-zinc-200 pb-8 gap-6">
         <div>
@@ -55,9 +66,9 @@ const handleLogout = async () => {
               <NuxtLink to="/" class="bg-black text-white px-6 py-3 rounded-xl font-medium hover:bg-zinc-800 transition-colors">Browse Components</NuxtLink>
            </div>
 
-           <div v-for="item in dashboardData.purchases" :key="item.id" class="bg-white p-5 rounded-[2rem] border border-zinc-200 shadow-sm hover:shadow-md transition-shadow group flex flex-col">
+           <div v-for="item in dashboardData?.purchases" :key="item.id" class="bg-white p-5 rounded-[2rem] border border-zinc-200 shadow-sm hover:shadow-md transition-shadow group flex flex-col">
               <div class="w-full aspect-video rounded-2xl overflow-hidden bg-zinc-100 mb-5 relative">
-                <video :src="item.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"></video>
+                <video :src="item.videoUrl || item.video" autoplay loop muted playsinline class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"></video>
               </div>
               <h3 class="font-bold text-lg text-black">{{ item.title }}</h3>
               <p class="text-sm text-zinc-500 mt-1 mb-6">Purchased on {{ new Date(item.purchaseDate).toLocaleDateString() }}</p>
@@ -74,8 +85,8 @@ const handleLogout = async () => {
            <div v-if="dashboardData?.savedProjects?.length === 0" class="col-span-full py-20 bg-white rounded-[2rem] border border-dashed border-zinc-300 text-center flex flex-col items-center justify-center">
               <p class="text-zinc-500">You haven't saved any inspiration yet.</p>
            </div>
-           <div v-for="proj in dashboardData.savedProjects" :key="proj.id" class="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm group">
-              <video :src="proj.videoUrl" autoplay loop muted playsinline class="w-full aspect-video rounded-xl object-cover bg-black mb-4 group-hover:opacity-90 transition-opacity"></video>
+           <div v-for="proj in dashboardData?.savedProjects" :key="proj.id" class="bg-white p-4 rounded-2xl border border-zinc-200 shadow-sm group">
+              <video :src="proj.videoUrl || proj.video" autoplay loop muted playsinline class="w-full aspect-video rounded-xl object-cover bg-black mb-4 group-hover:opacity-90 transition-opacity"></video>
               <h3 class="font-medium text-black">{{ proj.title }}</h3>
            </div>
         </div>
@@ -86,7 +97,7 @@ const handleLogout = async () => {
               <NuxtLink to="/ticket" class="text-blue-600 font-medium hover:underline">Create a new ticket</NuxtLink>
            </div>
            <div v-else class="flex flex-col gap-4">
-             <div v-for="ticket in dashboardData.tickets" :key="ticket.id" class="bg-white border border-zinc-200 p-6 rounded-2xl shadow-sm">
+             <div v-for="ticket in dashboardData?.tickets" :key="ticket.id" class="bg-white border border-zinc-200 p-6 rounded-2xl shadow-sm">
                 <div class="flex justify-between items-start mb-3">
                   <span class="text-sm font-medium bg-zinc-100 px-3 py-1 rounded-full text-zinc-600">{{ ticket.status }}</span>
                   <span class="text-xs text-zinc-400">{{ new Date(ticket.createdAt).toLocaleDateString() }}</span>
@@ -98,7 +109,6 @@ const handleLogout = async () => {
         </div>
 
       </div>
-
     </div>
   </div>
 </template>

@@ -1,9 +1,10 @@
 import { PrismaClient } from '@prisma/client'
+import { requireAuth } from '../../utils/jwt'
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-  const userId = getCookie(event, 'auth_token')
-  if(!userId) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+  const user = await requireAuth(event) // Token'ı otomatik doğrular
+  const userId = user.userId
 
   const savedProjects = await prisma.savedProject.findMany({
     where: { userId },
