@@ -1,16 +1,39 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useToast } from '#imports'
 
 const isAboutOpen = ref(false)
 const isUserMenuOpen = ref(false)
+const isNotifMenuOpen = ref(false)
+
 const { data: user } = await useFetch('/api/auth/me')
+const { data: notifData, refresh: refreshNotifs } = await useFetch(user.value ? '/api/notifications' : '')
 const { addToast } = useToast()
 
 const handleLogout = async () => {
   await $fetch('/api/auth/logout', { method: 'POST' })
   addToast('Signed out successfully.', 'info')
   setTimeout(() => { window.location.href = '/' }, 500)
+}
+
+const markAsRead = async () => {
+  if (notifData.value?.unreadCount && notifData.value.unreadCount > 0) {
+    await $fetch('/api/notifications/read', { method: 'POST' })
+    await refreshNotifs()
+  }
+}
+
+const toggleNotifs = () => {
+  isNotifMenuOpen.value = !isNotifMenuOpen.value
+  if (isNotifMenuOpen.value) {
+    isUserMenuOpen.value = false
+    markAsRead()
+  }
+}
+
+const toggleUserMenu = () => {
+  isUserMenuOpen.value = !isUserMenuOpen.value
+  if (isUserMenuOpen.value) isNotifMenuOpen.value = false
 }
 </script>
 
@@ -45,11 +68,35 @@ const handleLogout = async () => {
           </NuxtLink>
 
           <div class="relative">
-            <button @click="isUserMenuOpen = !isUserMenuOpen" class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold flex items-center justify-center shadow-md border-2 border-white ring-2 ring-transparent hover:ring-indigo-100 transition-all">
-              {{ user.name?.charAt(0).toUpperCase() || 'U' }}
+            <button @click="toggleNotifs" class="relative w-10 h-10 rounded-full bg-zinc-100 hover:bg-zinc-200 flex items-center justify-center text-zinc-600 transition-colors focus:outline-none">
+              <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+              <span v-if="notifData?.unreadCount > 0" class="absolute top-2 right-2.5 w-2 h-2 bg-red-500 rounded-full border border-white"></span>
             </button>
 
-            <div v-if="isUserMenuOpen" @click="isUserMenuOpen = false" class="fixed inset-0 z-40"></div>
+            <div v-if="isNotifMenuOpen" class="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl border border-zinc-100 z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
+              <div class="px-4 py-3 border-b border-zinc-100 bg-zinc-50/50 flex justify-between items-center">
+                <span class="font-bold text-black text-sm">Notifications</span>
+              </div>
+              <div class="max-h-[300px] overflow-y-auto p-2 flex flex-col gap-1">
+                <div v-if="!notifData?.notifications?.length" class="p-4 text-center text-sm text-zinc-500">
+                  No new notifications.
+                </div>
+                <div v-for="notif in notifData?.notifications" :key="notif.id" :class="notif.isRead ? 'opacity-70' : 'bg-indigo-50/50'" class="p-3 rounded-xl hover:bg-zinc-50 transition-colors cursor-pointer">
+                  <div class="flex items-center gap-2 mb-1">
+                    <span class="w-2 h-2 rounded-full" :class="notif.isRead ? 'bg-transparent' : 'bg-indigo-500'"></span>
+                    <h4 class="font-bold text-sm text-black">{{ notif.title }}</h4>
+                  </div>
+                  <p class="text-xs text-zinc-600 pl-4">{{ notif.message }}</p>
+                  <p class="text-[10px] text-zinc-400 pl-4 mt-1">{{ new Date(notif.createdAt).toLocaleDateString() }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="relative">
+            <button @click="toggleUserMenu" class="w-10 h-10 rounded-full bg-gradient-to-tr from-indigo-500 to-purple-500 text-white font-bold flex items-center justify-center shadow-md border-2 border-white ring-2 ring-transparent hover:ring-indigo-100 transition-all">
+              {{ user.name?.charAt(0).toUpperCase() || 'U' }}
+            </button>
 
             <div v-if="isUserMenuOpen" class="absolute right-0 mt-3 w-56 bg-white rounded-2xl shadow-xl border border-zinc-100 z-50 overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-200">
               <div class="px-5 py-4 border-b border-zinc-100 bg-zinc-50/50">
@@ -83,7 +130,9 @@ const handleLogout = async () => {
       </div>
     </header>
 
-    <main class="flex-grow pt-[72px]"><slot /></main>
+    <div v-if="isUserMenuOpen || isNotifMenuOpen" @click="isUserMenuOpen=false; isNotifMenuOpen=false" class="fixed inset-0 z-40"></div>
+
+    <main class="flex-grow pt-[72px] relative z-10"><slot /></main>
 
     <UiAboutModal :isOpen="isAboutOpen" @close="isAboutOpen = false" />
     <UiToast />

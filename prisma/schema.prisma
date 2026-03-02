@@ -25,6 +25,8 @@ model User {
   purchases        Purchase[]
   createdWorks     Project[]      @relation("AuthorProjects")
   reviews          Review[]
+  notifications    Notification[]
+  payouts          PayoutRequest[] // YENI: Para çekme talepleri
 }
 
 model Project {
@@ -44,8 +46,7 @@ model Project {
   reviewCount      Int            @default(0)
   sourceUrl        String?
 
-  // YENI: Coklu Framework Kod Destegi
-  sourceCode       String?        @db.Text // Legacy/Fallback
+  sourceCode       String?        @db.Text
   sourceCodeReact  String?        @db.Text
   sourceCodeVue    String?        @db.Text
   sourceCodeHtml   String?        @db.Text
@@ -79,13 +80,14 @@ model Review {
 }
 
 model Purchase {
-  id        String   @id @default(uuid())
-  userId    String
-  projectId String
-  pricePaid Float?   @default(0)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now())
+  id          String   @id @default(uuid())
+  userId      String
+  projectId   String
+  pricePaid   Float?   @default(0)
+  licenseType String   @default("STANDARD")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
 
   @@unique([userId, projectId])
   @@index([userId])
@@ -122,6 +124,32 @@ model Category {
   id        String   @id @default(uuid())
   name      String   @unique
   createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  link      String?
+  isRead    Boolean  @default(false)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+}
+
+// YENİ: Para Çekme (Payout) Tablosu
+model PayoutRequest {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Float
+  status    String   @default("PENDING") // PENDING, COMPLETED, REJECTED
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum Role {

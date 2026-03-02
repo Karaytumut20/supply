@@ -9,42 +9,36 @@ const { data: user } = await useFetch('/api/auth/me')
 
 const isFree = computed(() => !props.item.price || props.item.price <= 0)
 
-// GÜVENLİ VERİ İŞLEME: String veya Array gelme durumlarını tolere ediyoruz
+// HATA ÇÖZÜMÜ: Categories Array mi String mi kontrol ediliyor
+const displayCategory = computed(() => {
+  if (!props.item.categories) return 'Component'
+  if (Array.isArray(props.item.categories)) return props.item.categories[0] || 'Component'
+  if (typeof props.item.categories === 'string') return props.item.categories.split(',')[0].trim()
+  return 'Component'
+})
+
 const techList = computed(() => {
   if(!props.item.techStack) return []
   if(Array.isArray(props.item.techStack)) return props.item.techStack.slice(0, 2)
   return props.item.techStack.split(',').map((t:string)=>t.trim()).slice(0, 2)
 })
 
-const displayCategory = computed(() => {
-  if(!props.item.categories) return 'Component'
-  if(Array.isArray(props.item.categories)) return props.item.categories[0]
-  if(typeof props.item.categories === 'string') return props.item.categories.split(',')[0].trim()
-  return 'Component'
-})
-
-// Quick Save
 const isSaving = ref(false)
 const quickSave = async (e: Event) => {
-  e.stopPropagation() // Modalı açmasını engelle
+  e.stopPropagation()
   if(!user.value) { addToast('Lütfen önce giriş yapın.', 'error'); return; }
   isSaving.value = true
   try {
     const res = await $fetch('/api/projects/save', { method: 'POST', body: { projectId: props.item.id } })
     addToast(res.message || 'Başarıyla kaydedildi.', 'success')
-  } catch(e) {
-    addToast('Hata oluştu', 'error')
-  } finally {
-    isSaving.value = false
-  }
+  } catch(e) { addToast('Hata oluştu', 'error') }
+  finally { isSaving.value = false }
 }
 </script>
 
 <template>
   <div class="group flex flex-col cursor-pointer" @click="emit('open', item)">
-
     <div class="relative w-full aspect-[4/4.2] bg-[#f4f4f5] rounded-[32px] flex items-center justify-center p-6 sm:p-8 overflow-hidden transition-colors duration-300 group-hover:bg-[#ebebec]">
-
       <button @click="quickSave" class="absolute top-5 left-5 z-30 w-9 h-9 bg-white/90 backdrop-blur-md hover:bg-white text-zinc-400 hover:text-red-500 rounded-full shadow-sm border border-zinc-200/50 flex items-center justify-center transition-all active:scale-90" :disabled="isSaving">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
       </button>
