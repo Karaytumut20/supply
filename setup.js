@@ -1,224 +1,340 @@
 import fs from 'fs'
 import path from 'path'
 
-console.log('🚀 Kullanici Dashboard Sayfasi Gelistiriliyor...\n')
-
-const files = {}
-
-// 1. DASHBOARD API GÜNCELLEMESİ (Satın alınan projeleri de çekmesi için)
-files['server/api/user/dashboard.get.ts'] = [
-  "import { PrismaClient } from '@prisma/client'",
-  'const prisma = new PrismaClient()',
-  'export default defineEventHandler(async (event) => {',
-  "  const userId = getCookie(event, 'auth_token')",
-  "  if(!userId) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })",
-  '',
-  '  const savedProjects = await prisma.savedProject.findMany({',
-  '    where: { userId },',
-  '    include: { project: true },',
-  "    orderBy: { createdAt: 'desc' }",
-  '  })',
-  '',
-  '  const purchases = await prisma.purchase.findMany({',
-  '    where: { userId },',
-  '    include: { project: true },',
-  "    orderBy: { createdAt: 'desc' }",
-  '  })',
-  '',
-  '  const tickets = await prisma.ticket.findMany({',
-  '    where: { userId },',
-  "    orderBy: { createdAt: 'desc' }",
-  '  })',
-  '',
-  '  return {',
-  '    savedProjects: savedProjects.map(sp => sp.project),',
-  '    purchasedProjects: purchases.map(p => p.project),',
-  '    tickets',
-  '  }',
-  '})'
-].join('\n')
-
-// 2. GELİŞMİŞ DASHBOARD ARAYÜZÜ (Sekmeler, Profil Özeti, PRO Upgrade)
-files['app/pages/dashboard.vue'] = [
-  '<script setup lang="ts">',
-  "import { ref } from 'vue'",
-  "useSeoMeta({ title: 'My Dashboard' })",
-  '',
-  "const { data: user, pending: userPending } = await useFetch('/api/auth/me')",
-  "if (!userPending.value && !user.value) { if (typeof window !== 'undefined') window.location.href = '/sign-in' }",
-  '',
-  "const { data: dashboardData, pending: dashPending } = await useFetch('/api/user/dashboard')",
-  '',
-  "const activeTab = ref('Saved') // 'Saved', 'Downloads', 'Support'",
-  'const isProcessing = ref(false)',
-  '',
-  'const handleLogout = async () => {',
-  "  await $fetch('/api/auth/logout', { method: 'POST' })",
-  "  window.location.href = '/'",
-  '}',
-  '',
-  'const upgradeToPro = async () => {',
-  '  isProcessing.value = true',
-  '  try {',
-  "    await $fetch('/api/user/subscribe', { method: 'POST' })",
-  "    alert('Tebrikler! Artik PRO uyesiniz. Tum Premium iceriklere ucretsiz erisebilirsiniz.')",
-  '    window.location.reload()',
-  "  } catch(e) { alert('Hata olustu.') }",
-  '  finally { isProcessing.value = false }',
-  '}',
-  '',
-  'const showCode = (code: string) => {',
-  "  alert('KAYNAK KOD:\\n\\n' + (code || 'Kod bulunamadi.'))",
-  '}',
-  '',
-  'const formatDate = (dateString: string) => {',
-  "  return new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })",
-  '}',
-  '</script>',
-  '',
-  '<template>',
-  '  <div v-if="user" class="min-h-screen bg-[#fafafa] pt-24 pb-12 px-5 sm:px-8 font-sans text-zinc-900">',
-  '    <div class="max-w-6xl mx-auto">',
-  '      ',
-  '      ',
-  '      <div class="flex flex-col md:flex-row justify-between items-start md:items-end mb-10 gap-6">',
-  '        <div class="flex items-center gap-5">',
-  '          <div class="w-16 h-16 rounded-full bg-black text-white flex items-center justify-center text-2xl font-bold shadow-lg">',
-  "            {{ user.name ? user.name.charAt(0).toUpperCase() : 'U' }}",
-  '          </div>',
-  '          <div>',
-  '            <h1 class="text-3xl font-bold tracking-tight text-black flex items-center gap-3">',
-  "              {{ user.name || 'User' }}",
-  '              <span v-if="user.plan === \'PRO\'" class="bg-amber-400 text-black px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-widest uppercase shadow-sm">PRO MEMBER</span>',
-  '              <span v-else class="bg-zinc-200 text-zinc-600 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-widest uppercase">FREE PLAN</span>',
-  '            </h1>',
-  '            <p class="text-zinc-500 text-sm mt-1">{{ user.email }}</p>',
-  '            <div v-if="user.role === \'ADMIN\'" class="mt-3">',
-  '              <NuxtLink to="/admin" class="bg-red-50 text-red-600 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wide border border-red-100 hover:bg-red-100 transition-colors inline-flex items-center gap-2">',
-  '                Admin Panel <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
-  '              </NuxtLink>',
-  '            </div>',
-  '          </div>',
-  '        </div>',
-  '        <button @click="handleLogout" class="px-5 py-2.5 bg-white border border-zinc-200 hover:bg-zinc-50 rounded-xl text-sm font-medium transition-colors shadow-sm">',
-  '          Log Out',
-  '        </button>',
-  '      </div>',
-  '',
-  '      ',
-  '      <div v-if="user.plan === \'FREE\'" class="mb-10 bg-gradient-to-r from-zinc-900 to-black rounded-3xl p-8 flex flex-col sm:flex-row items-center justify-between shadow-2xl shadow-black/20 gap-6">',
-  '        <div>',
-  '          <h2 class="text-white text-2xl font-bold mb-2 flex items-center gap-2">',
-  '            <svg class="text-amber-400" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
-  '            Unlock Everything',
-  '          </h2>',
-  '          <p class="text-zinc-400 text-sm max-w-md">Get unlimited access to all premium components, exclusive templates, and priority support by upgrading to the PRO plan.</p>',
-  '        </div>',
-  '        <button @click="upgradeToPro" :disabled="isProcessing" class="w-full sm:w-auto px-8 py-4 bg-amber-400 hover:bg-amber-500 text-black font-bold rounded-xl transition-colors shadow-lg disabled:opacity-70 whitespace-nowrap">',
-  "          {{ isProcessing ? 'Processing...' : 'Upgrade to PRO' }}",
-  '        </button>',
-  '      </div>',
-  '',
-  '      <div v-if="dashPending" class="animate-pulse text-zinc-400 font-medium">Loading your data...</div>',
-  '      <div v-else>',
-  '        ',
-  '        ',
-  '        <div class="flex gap-2 mb-8 border-b border-zinc-200 pb-px overflow-x-auto no-scrollbar">',
-  "          <button @click=\"activeTab = 'Saved'\" :class=\"activeTab === 'Saved' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'\" class=\"px-4 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2\">",
-  '            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg> Saved Items ({{ dashboardData?.savedProjects?.length || 0 }})',
-  '          </button>',
-  "          <button @click=\"activeTab = 'Downloads'\" :class=\"activeTab === 'Downloads' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'\" class=\"px-4 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2\">",
-  '            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> My Downloads ({{ dashboardData?.purchasedProjects?.length || 0 }})',
-  '          </button>',
-  "          <button @click=\"activeTab = 'Support'\" :class=\"activeTab === 'Support' ? 'border-black text-black' : 'border-transparent text-zinc-500 hover:text-black'\" class=\"px-4 py-3 border-b-2 font-medium text-sm transition-colors whitespace-nowrap flex items-center gap-2\">",
-  '            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> Support Tickets',
-  '          </button>',
-  '        </div>',
-  '',
-  '        ',
-  '        ',
-  '        ',
-  '        <div v-if="activeTab === \'Saved\'" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">',
-  '          <div v-if="!dashboardData?.savedProjects?.length" class="col-span-full py-16 text-center bg-white border border-zinc-200 rounded-3xl border-dashed">',
-  '            <div class="w-12 h-12 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-4 text-zinc-400"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div>',
-  '            <h3 class="text-lg font-medium text-black">No saved items</h3>',
-  '            <p class="text-zinc-500 text-sm mt-1">Explore the library and bookmark components you like.</p>',
-  '            <NuxtLink to="/" class="mt-4 inline-block px-5 py-2.5 bg-black text-white text-sm font-medium rounded-xl hover:bg-zinc-800 transition">Explore Library</NuxtLink>',
-  '          </div>',
-  '          <div v-for="proj in dashboardData.savedProjects" :key="proj.id" class="bg-white p-4 rounded-3xl border border-zinc-200 shadow-sm flex flex-col gap-4 group">',
-  '            <div class="w-full aspect-video rounded-2xl bg-zinc-100 overflow-hidden relative">',
-  '              <video :src="proj.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 pointer-events-none"></video>',
-  '            </div>',
-  '            <div>',
-  '              <h3 class="font-medium text-black leading-tight">{{ proj.title }}</h3>',
-  '              <p class="text-xs text-zinc-500 mt-1">{{ proj.categories }}</p>',
-  '            </div>',
-  '          </div>',
-  '        </div>',
-  '',
-  '        ',
-  '        <div v-if="activeTab === \'Downloads\'">',
-  '          <div v-if="user.plan === \'PRO\'" class="mb-6 p-5 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-start gap-4">',
-  '            <div class="text-emerald-500 mt-0.5"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>',
-  '            <div>',
-  '              <h3 class="text-emerald-800 font-bold text-sm">PRO Access Active</h3>',
-  '              <p class="text-emerald-700 text-xs mt-1">You don\'t need to purchase items individually. You can access the source code of any component directly from the homepage.</p>',
-  '            </div>',
-  '          </div>',
-  '          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">',
-  '            <div v-if="!dashboardData?.purchasedProjects?.length" class="col-span-full py-16 text-center bg-white border border-zinc-200 rounded-3xl border-dashed">',
-  '              <h3 class="text-lg font-medium text-black">No purchases yet</h3>',
-  '              <p class="text-zinc-500 text-sm mt-1">Items you purchase individually will appear here.</p>',
-  '            </div>',
-  '            <div v-for="proj in dashboardData.purchasedProjects" :key="proj.id" class="bg-white p-4 rounded-3xl border border-zinc-200 shadow-sm flex flex-col gap-4">',
-  '              <div class="w-full aspect-video rounded-2xl bg-zinc-100 overflow-hidden relative">',
-  '                <video :src="proj.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover pointer-events-none"></video>',
-  '              </div>',
-  '              <div>',
-  '                <h3 class="font-medium text-black leading-tight">{{ proj.title }}</h3>',
-  '                <p class="text-xs text-zinc-500 mt-1 mb-4">Purchased</p>',
-  '                <button @click="showCode(proj.sourceCode)" class="w-full py-2.5 bg-black hover:bg-zinc-800 text-white text-xs font-semibold rounded-xl transition-colors flex items-center justify-center gap-2">',
-  '                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> View Source Code',
-  '                </button>',
-  '              </div>',
-  '            </div>',
-  '          </div>',
-  '        </div>',
-  '',
-  '        ',
-  '        <div v-if="activeTab === \'Support\'" class="max-w-3xl">',
-  '          <div class="flex justify-between items-center mb-6">',
-  '            <p class="text-zinc-500 text-sm">Track your support requests.</p>',
-  '            <NuxtLink to="/ticket" class="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-black text-xs font-bold rounded-lg transition-colors">New Ticket</NuxtLink>',
-  '          </div>',
-  '          <div v-if="!dashboardData?.tickets?.length" class="py-12 text-center bg-white border border-zinc-200 rounded-3xl border-dashed">',
-  '            <h3 class="text-base font-medium text-black">No open tickets</h3>',
-  '          </div>',
-  '          <div v-else class="bg-white border border-zinc-200 rounded-3xl overflow-hidden shadow-sm">',
-  '            <div v-for="ticket in dashboardData.tickets" :key="ticket.id" class="p-5 sm:p-6 border-b border-zinc-100 last:border-0 hover:bg-zinc-50 transition-colors">',
-  '              <div class="flex justify-between items-start mb-3">',
-  '                <span class="text-xs font-mono text-zinc-400">#{{ ticket.id.substring(0,8) }}</span>',
-  "                <span :class=\"ticket.status === 'OPEN' ? 'bg-amber-100 text-amber-700' : 'bg-zinc-100 text-zinc-500'\" class=\"px-2.5 py-1 rounded-md text-[10px] font-bold tracking-wider uppercase\">",
-  '                  {{ ticket.status }}',
-  '                </span>',
-  '              </div>',
-  '              <h3 class="font-medium text-black text-base mb-2">{{ ticket.subject }}</h3>',
-  '              <p class="text-sm text-zinc-500 mb-3 line-clamp-2">{{ ticket.message }}</p>',
-  '              <p class="text-[11px] text-zinc-400 font-medium">Submitted on {{ formatDate(ticket.createdAt) }}</p>',
-  '            </div>',
-  '          </div>',
-  '        </div>',
-  '',
-  '      </div>',
-  '    </div>',
-  '  </div>',
-  '</template>'
-].join('\n')
-
-for (const [filepath, content] of Object.entries(files)) {
-  const fullPath = path.join(process.cwd(), filepath)
-  fs.writeFileSync(fullPath, content, 'utf8')
-  console.log(`✅ ${filepath} basariyla guncellendi!`)
+const createDir = (dirPath) => {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true })
+  }
 }
 
-console.log('\n🎉 Kullanici Paneli (Dashboard) harika bir sekilde donatildi!')
+createDir(path.join(process.cwd(), 'app/pages/creator'))
+createDir(path.join(process.cwd(), 'server/api/user'))
+createDir(path.join(process.cwd(), 'server/api/creator'))
+
+// 1. PRISMA SCHEMA GÜNCELLEMESİ (Author ve Bio eklendi)
+const prismaSchema = `generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String         @id @default(uuid())
+  name          String?
+  email         String         @unique
+  password      String
+  role          Role           @default(USER)
+  isPro         Boolean        @default(false)
+  bio           String?        // YENI: Satıcı biyografisi
+  avatar        String?        // YENI: Profil resmi URL'si
+  createdAt     DateTime       @default(now())
+
+  tickets       Ticket[]
+  savedProjects SavedProject[]
+  purchases     Purchase[]
+  createdWorks  Project[]      @relation("AuthorProjects") // YENI: Satıcının ürettiği projeler
+}
+
+model Project {
+  id          String         @id @default(uuid())
+  title       String
+  description String?
+  videoUrl    String
+  sourceUrl   String?
+  price       Float          @default(0)
+  categories  String
+  tags        String?
+  techStack   String?
+  downloads   Int            @default(0)
+  rating      Float          @default(5.0)
+  reviewCount Int            @default(0)
+  status      String         @default("Active")
+  createdAt   DateTime       @default(now())
+
+  authorId    String?        // YENI: Ürünü oluşturan kişi
+  author      User?          @relation("AuthorProjects", fields: [authorId], references: [id])
+
+  savedBy     SavedProject[]
+  purchases   Purchase[]
+}
+
+model Purchase {
+  id        String   @id @default(uuid())
+  userId    String
+  projectId String
+  pricePaid Float
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, projectId])
+}
+
+model SavedProject {
+  id        String   @id @default(uuid())
+  userId    String
+  projectId String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  @@unique([userId, projectId])
+}
+
+model FAQ {
+  id       String @id @default(uuid())
+  question String
+  answer   String
+}
+
+model Ticket {
+  id        String   @id @default(uuid())
+  subject   String
+  message   String
+  status    String   @default("OPEN")
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+enum Role {
+  USER
+  ADMIN
+}`
+
+fs.writeFileSync(path.join(process.cwd(), 'prisma/schema.prisma'), prismaSchema, 'utf8')
+
+// 2. KULLANICIYI "PRO" YAPMA API'Sİ (Mock Upgrade)
+const upgradeApi = `import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+export default defineEventHandler(async (event) => {
+  const userId = getCookie(event, 'auth_token')
+  if(!userId) throw createError({ statusCode: 401, statusMessage: 'Lütfen giriş yapın.' })
+
+  // Mock Ödeme İşlemi (Burada gerçekte Stripe Webhook veya Iyzico onayı olur)
+  const updatedUser = await prisma.user.update({
+    where: { id: userId },
+    data: { isPro: true }
+  })
+
+  return { success: true, message: 'Hoş geldin! Artık Pro üyesin.' }
+})`
+fs.writeFileSync(path.join(process.cwd(), 'server/api/user/upgrade.post.ts'), upgradeApi, 'utf8')
+
+// 3. SATICI (CREATOR) BİLGİSİNİ GETİRME API'Sİ
+const creatorApi = `import { PrismaClient } from '@prisma/client'
+const prisma = new PrismaClient()
+
+export default defineEventHandler(async (event) => {
+  const query = getQuery(event)
+  const creatorId = query.id as string
+
+  if(!creatorId) throw createError({ statusCode: 400, statusMessage: 'Creator ID gerekli' })
+
+  const creator = await prisma.user.findUnique({
+    where: { id: creatorId },
+    select: {
+      id: true,
+      name: true,
+      bio: true,
+      avatar: true,
+      createdAt: true,
+      createdWorks: {
+        where: { status: 'Active' },
+        orderBy: { downloads: 'desc' }
+      }
+    }
+  })
+
+  if(!creator) throw createError({ statusCode: 404, statusMessage: 'Satıcı bulunamadı' })
+
+  return creator
+})`
+fs.writeFileSync(path.join(process.cwd(), 'server/api/creator/profile.get.ts'), creatorApi, 'utf8')
+
+// 4. MUHTEŞEM PRICING (FİYATLANDIRMA) SAYFASI
+const pricingCode = `<script setup lang="ts">
+import { ref } from 'vue'
+import { useToast } from '#imports'
+
+useSeoMeta({ title: 'Pricing - Get Pro Access' })
+
+const { data: user, refresh: refreshUser } = await useFetch('/api/auth/me')
+const { addToast } = useToast()
+const isUpgrading = ref(false)
+const isYearly = ref(true)
+
+const upgradeToPro = async () => {
+  if(!user.value) {
+    addToast('Lütfen önce giriş yapın.', 'error')
+    window.location.href = '/sign-in'
+    return
+  }
+  if(user.value.isPro) {
+    addToast('Zaten Pro üyesisiniz!', 'info')
+    return
+  }
+
+  isUpgrading.value = true
+  try {
+    const res = await $fetch('/api/user/upgrade', { method: 'POST' })
+    addToast(res.message, 'success')
+    await refreshUser()
+    setTimeout(() => window.location.href = '/dashboard', 1500)
+  } catch(e) {
+    addToast('Yükseltme başarısız oldu.', 'error')
+  } finally {
+    isUpgrading.value = false
+  }
+}
+</script>
+
+<template>
+  <div class="min-h-screen bg-[#050505] text-white pt-32 pb-24 px-6 relative overflow-hidden">
+    <div class="absolute top-1/4 left-1/2 -translate-x-1/2 w-[80vw] h-[600px] bg-indigo-500/10 blur-[150px] rounded-full pointer-events-none"></div>
+    <div class="absolute bottom-0 left-0 w-full h-[300px] bg-gradient-to-t from-black to-transparent pointer-events-none"></div>
+
+    <div class="max-w-[1200px] mx-auto relative z-10 flex flex-col items-center">
+
+      <div class="text-center mb-16">
+        <h1 class="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+          Level up your <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">workflow.</span>
+        </h1>
+        <p class="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto">
+          Choose the right plan for you. Get lifetime access to premium components or subscribe to unlock everything instantly.
+        </p>
+      </div>
+
+      <div class="flex items-center gap-3 bg-white/5 border border-white/10 p-1.5 rounded-full mb-16 backdrop-blur-md">
+        <button @click="isYearly = false" :class="!isYearly ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'" class="px-6 py-2 rounded-full text-sm font-bold transition-all">Monthly</button>
+        <button @click="isYearly = true" :class="isYearly ? 'bg-white text-black' : 'text-zinc-400 hover:text-white'" class="px-6 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-2">
+          Yearly <span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider hidden sm:block">Save 20%</span>
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl mx-auto">
+
+        <div class="bg-white/5 border border-white/10 rounded-[2rem] p-10 flex flex-col backdrop-blur-md">
+          <h3 class="text-2xl font-bold mb-2">Pay per component</h3>
+          <p class="text-zinc-400 text-sm mb-8">Perfect for single projects and freelancers.</p>
+          <div class="flex items-baseline gap-2 mb-8">
+            <span class="text-5xl font-extrabold">Free</span>
+            <span class="text-zinc-500">to join</span>
+          </div>
+          <ul class="space-y-4 mb-10 flex-1">
+            <li class="flex items-center gap-3 text-zinc-300"><svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Browse all components</li>
+            <li class="flex items-center gap-3 text-zinc-300"><svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Download free assets</li>
+            <li class="flex items-center gap-3 text-zinc-300"><svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Pay individually for premium items</li>
+            <li class="flex items-center gap-3 text-zinc-500"><svg class="w-5 h-5 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> No full library access</li>
+          </ul>
+          <NuxtLink to="/" class="w-full text-center bg-white/10 hover:bg-white/20 text-white py-4 rounded-xl font-bold transition-all">Start Browsing</NuxtLink>
+        </div>
+
+        <div class="relative bg-gradient-to-b from-indigo-500/20 to-purple-500/5 border border-indigo-500/30 rounded-[2rem] p-10 flex flex-col shadow-2xl shadow-indigo-500/10 transform md:-translate-y-4 backdrop-blur-md">
+          <div class="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-indigo-500 to-purple-500 text-white px-4 py-1 rounded-full text-xs font-bold tracking-widest uppercase shadow-lg">Most Popular</div>
+          <h3 class="text-2xl font-bold mb-2 text-white">All-Access Pro</h3>
+          <p class="text-indigo-200/70 text-sm mb-8">For agencies and serious developers.</p>
+          <div class="flex items-baseline gap-2 mb-8">
+            <span class="text-5xl font-extrabold text-white">\${{ isYearly ? '19' : '29' }}</span>
+            <span class="text-indigo-300/60">/ month</span>
+          </div>
+          <ul class="space-y-4 mb-10 flex-1">
+            <li class="flex items-center gap-3 text-indigo-50"><svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <strong class="text-white">Unlock all</strong> premium components</li>
+            <li class="flex items-center gap-3 text-indigo-50"><svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unlimited commercial projects</li>
+            <li class="flex items-center gap-3 text-indigo-50"><svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> React, Vue & HTML source code</li>
+            <li class="flex items-center gap-3 text-indigo-50"><svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Priority email support</li>
+          </ul>
+
+          <button v-if="user?.isPro" disabled class="w-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 py-4 rounded-xl font-bold cursor-not-allowed">Active Plan</button>
+          <button v-else @click="upgradeToPro" :disabled="isUpgrading" class="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] disabled:opacity-70">
+            {{ isUpgrading ? 'Processing...' : 'Upgrade to Pro' }}
+          </button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</template>`
+fs.writeFileSync(path.join(process.cwd(), 'app/pages/pricing.vue'), pricingCode, 'utf8')
+
+// 5. SATICI (CREATOR) PROFİL SAYFASI
+const creatorCode = `<script setup lang="ts">
+import { useRoute } from 'vue-router'
+import { ref } from 'vue'
+
+const route = useRoute()
+const creatorId = route.params.id
+
+const { data: creator, pending, error } = await useFetch(\`/api/creator/profile?id=\${creatorId}\`)
+
+useSeoMeta({
+  title: computed(() => creator.value ? \`\${creator.value.name} - Creator Profile\` : 'Creator Profile')
+})
+
+const selectedItem = ref(null)
+const isModalOpen = ref(false)
+const openModal = (item: any) => { selectedItem.value = item; isModalOpen.value = true }
+</script>
+
+<template>
+  <div class="min-h-screen bg-[#fafafa]">
+    <div v-if="pending" class="pt-40 flex justify-center"><div class="w-10 h-10 border-4 border-black border-t-transparent rounded-full animate-spin"></div></div>
+
+    <div v-else-if="error || !creator" class="pt-40 text-center text-zinc-500">
+      <h2 class="text-2xl font-bold text-black mb-2">Creator not found</h2>
+      <p>This profile doesn't exist or has been removed.</p>
+    </div>
+
+    <div v-else>
+      <div class="w-full h-[250px] bg-gradient-to-r from-zinc-800 to-black relative">
+         <div class="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+      </div>
+
+      <div class="max-w-[1200px] mx-auto px-6 relative -mt-16 mb-16 flex flex-col md:flex-row items-center md:items-end gap-6">
+        <div class="w-32 h-32 rounded-full border-4 border-white bg-white shadow-xl overflow-hidden flex items-center justify-center text-4xl font-bold bg-gradient-to-tr from-indigo-100 to-purple-100 text-indigo-600">
+          <img v-if="creator.avatar" :src="creator.avatar" class="w-full h-full object-cover" />
+          <span v-else>{{ creator.name?.charAt(0) }}</span>
+        </div>
+        <div class="flex-1 text-center md:text-left">
+          <h1 class="text-3xl font-bold text-black">{{ creator.name }}</h1>
+          <p class="text-zinc-500 mt-1 max-w-lg">{{ creator.bio || 'Digital creator crafting premium web components.' }}</p>
+        </div>
+        <div class="flex gap-4">
+          <div class="bg-white px-5 py-3 rounded-2xl shadow-sm border border-zinc-100 text-center">
+            <p class="text-xl font-extrabold text-black">{{ creator.createdWorks?.length || 0 }}</p>
+            <p class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Components</p>
+          </div>
+          <div class="bg-white px-5 py-3 rounded-2xl shadow-sm border border-zinc-100 text-center">
+            <p class="text-xl font-extrabold text-emerald-600">{{ creator.createdWorks?.reduce((acc, curr) => acc + curr.downloads, 0) || 0 }}</p>
+            <p class="text-[11px] font-bold text-zinc-400 uppercase tracking-widest">Total Sales</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="max-w-[1600px] mx-auto px-6 pb-24">
+        <h3 class="text-xl font-bold text-black mb-8 border-b border-zinc-200 pb-4">Works by {{ creator.name }}</h3>
+
+        <div v-if="creator.createdWorks?.length === 0" class="py-20 text-center text-zinc-500 border border-dashed border-zinc-300 rounded-[2rem]">
+          This creator hasn't published any items yet.
+        </div>
+
+        <div v-else class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
+          <ProductCard v-for="item in creator.createdWorks" :key="item.id" :item="item" @open="openModal" />
+        </div>
+      </div>
+
+      <ProductModal :isOpen="isModalOpen" :item="selectedItem" @close="isModalOpen = false" />
+    </div>
+  </div>
+</template>`
+fs.writeFileSync(path.join(process.cwd(), 'app/pages/creator/[id].vue'), creatorCode, 'utf8')
+
+console.log(
+  '✅ Aşama 6: Pro Pricing Sayfası, Mock Upgrade API ve Creator Portfolyo Sistemi başarıyla eklendi!'
+)
+console.log(
+  '⚠️ VERİTABANINA YENİ İLİŞKİLER EKLENDİ! Lütfen "npx prisma db push" komutunu çalıştırınız.'
+)

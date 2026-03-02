@@ -8,51 +8,55 @@ datasource db {
 }
 
 model User {
-  id               String         @id @default(uuid())
-  name             String?
-  email            String         @unique
-  password         String
-  role             Role           @default(USER)
-  plan             Plan           @default(FREE)
-  isPro            Boolean        @default(false)
-  stripeCustomerId String?
-  createdAt        DateTime       @default(now())
-  tickets          Ticket[]
-  savedProjects    SavedProject[]
-  purchases        Purchase[]
+  id            String         @id @default(uuid())
+  name          String?
+  email         String         @unique
+  password      String
+  role          Role           @default(USER)
+  isPro         Boolean        @default(false)
+  bio           String?        // YENI: Satıcı biyografisi
+  avatar        String?        // YENI: Profil resmi URL'si
+  createdAt     DateTime       @default(now())
+
+  tickets       Ticket[]
+  savedProjects SavedProject[]
+  purchases     Purchase[]
+  createdWorks  Project[]      @relation("AuthorProjects") // YENI: Satıcının ürettiği projeler
 }
 
 model Project {
   id          String         @id @default(uuid())
   title       String
+  description String?
   videoUrl    String
+  sourceUrl   String?
+  price       Float          @default(0)
   categories  String
   tags        String?
+  techStack   String?
+  downloads   Int            @default(0)
+  rating      Float          @default(5.0)
+  reviewCount Int            @default(0)
   status      String         @default("Active")
-  isPremium   Boolean        @default(false)
-  productType ProductType    @default(COMPONENT)
-  price       Float          @default(0)
-  sourceCode  String?        @db.Text
   createdAt   DateTime       @default(now())
-  savedBy     SavedProject[]
-  purchasedBy Purchase[]
 
-  @@index([status])
-  @@index([isPremium])
-  @@index([categories])
+  authorId    String?        // YENI: Ürünü oluşturan kişi
+  author      User?          @relation("AuthorProjects", fields: [authorId], references: [id])
+
+  savedBy     SavedProject[]
+  purchases   Purchase[]
 }
 
 model Purchase {
   id        String   @id @default(uuid())
   userId    String
   projectId String
+  pricePaid Float
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
   @@unique([userId, projectId])
-  @@index([userId])
-  @@index([projectId])
 }
 
 model SavedProject {
@@ -62,10 +66,13 @@ model SavedProject {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-
   @@unique([userId, projectId])
-  @@index([userId])
-  @@index([projectId])
+}
+
+model FAQ {
+  id       String @id @default(uuid())
+  question String
+  answer   String
 }
 
 model Ticket {
@@ -76,30 +83,9 @@ model Ticket {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
-
-  @@index([userId])
-  @@index([status])
-}
-
-model Category {
-  id        String   @id @default(uuid())
-  name      String   @unique
-  createdAt DateTime @default(now())
 }
 
 enum Role {
   USER
   ADMIN
-}
-
-enum Plan {
-  FREE
-  PRO
-}
-
-enum ProductType {
-  COMPONENT
-  ANIMATION
-  TEMPLATE
-  EFFECT
 }

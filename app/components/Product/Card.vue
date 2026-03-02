@@ -1,34 +1,64 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { useToast } from '#imports'
+
 const props = defineProps<{ item: any }>()
 const emit = defineEmits(['open'])
-const categoriesString = computed(() => { return props.item.categories ? (Array.isArray(props.item.categories) ? props.item.categories.join(', ') : props.item.categories) : '' })
+const { addToast } = useToast()
+const { data: user } = await useFetch('/api/auth/me')
+
+const isFree = computed(() => !props.item.price || props.item.price <= 0)
+const techList = computed(() => props.item.techStack ? props.item.techStack.split(',').map((t:string)=>t.trim()).slice(0, 2) : [])
+
+// Quick Save
+const isSaving = ref(false)
+const quickSave = async (e: Event) => {
+  e.stopPropagation() // Modalı açmasını engelle
+  if(!user.value) { addToast('Lütfen önce giriş yapın.', 'error'); return; }
+  isSaving.value = true
+  try {
+    const res = await $fetch('/api/projects/save', { method: 'POST', body: { projectId: props.item.id } })
+    addToast(res.message, 'success')
+  } catch(e) {
+    addToast('Hata oluştu', 'error')
+  } finally {
+    isSaving.value = false
+  }
+}
 </script>
+
 <template>
   <div class="group flex flex-col cursor-pointer" @click="emit('open', item)">
-    <div class="relative w-full aspect-[4/4.2] bg-[#f4f4f5] rounded-3xl flex items-center justify-center p-6 sm:p-10 overflow-hidden transition-all duration-500 group-hover:bg-[#ebebec]">
-      <div v-if="item.isPremium" class="absolute top-5 right-5 z-20">
-        <span class="bg-amber-400/90 backdrop-blur-sm text-amber-950 px-3 py-1.5 rounded-full text-[10px] font-black tracking-[0.2em] uppercase shadow-[0_4px_12px_rgba(251,191,36,0.3)]">PRO</span>
+
+    <div class="relative w-full aspect-[4/4.2] bg-[#f4f4f5] rounded-[32px] flex items-center justify-center p-6 sm:p-8 overflow-hidden transition-colors duration-300 group-hover:bg-[#ebebec]">
+
+      <button @click="quickSave" class="absolute top-5 left-5 z-30 w-9 h-9 bg-white/90 backdrop-blur-md hover:bg-white text-zinc-400 hover:text-red-500 rounded-full shadow-sm border border-zinc-200/50 flex items-center justify-center transition-all active:scale-90" :disabled="isSaving">
+        <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
+      </button>
+
+      <div class="absolute top-5 right-5 z-20">
+        <span v-if="!isFree" class="bg-black/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-black/10">${{ item.price }}</span>
+        <span v-else class="bg-emerald-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-emerald-500/20">Free</span>
       </div>
-      <div v-else class="absolute top-5 right-5 z-20 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <span class="bg-white/90 backdrop-blur-sm text-zinc-800 px-3 py-1.5 rounded-full text-[10px] font-bold tracking-[0.1em] uppercase shadow-sm">Free</span>
-      </div>
-      <div class="w-full relative rounded-xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.08)] bg-black transform transition-all duration-700 group-hover:scale-[1.04] group-hover:shadow-[0_20px_50px_rgb(0,0,0,0.15)] origin-bottom">
-         <video :src="item.video" autoplay loop muted playsinline class="w-full aspect-video object-cover pointer-events-none"></video>
+
+      <div class="w-full relative rounded-xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-black transform transition-transform duration-500 group-hover:scale-[1.04]">
+         <video autoplay loop muted playsinline class="w-full aspect-video object-cover pointer-events-none">
+            <source :src="item.video" type="video/mp4" />
+         </video>
+         <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+            <span class="bg-white/90 backdrop-blur-md text-black px-4 py-2 rounded-full text-xs font-semibold transform translate-y-4 group-hover:translate-y-0 transition-transform duration-300">View Details</span>
+         </div>
       </div>
     </div>
+
     <div class="flex justify-between items-start px-2 mt-4">
-      <div class="flex flex-col pr-4">
-        <h3 class="text-[17px] font-semibold text-zinc-900 leading-tight group-hover:text-indigo-600 transition-colors duration-300">
-          {{ item.title }}
-        </h3>
-        <p class="text-[14px] text-zinc-500 mt-1 font-medium">{{ categoriesString }}</p>
-      </div>
-      <div class="flex gap-2 shrink-0">
-        <div v-if="item.isPremium" class="h-[42px] flex items-center justify-center text-sm font-black text-black mr-1">${{ item.price }}</div>
-        <button class="w-[42px] h-[42px] flex items-center justify-center bg-white border border-zinc-200 hover:border-black hover:bg-black rounded-[14px] text-zinc-600 hover:text-white transition-all duration-300 shadow-sm group-hover:shadow-md" @click.stop="">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>
-        </button>
+      <div class="flex flex-col">
+        <h3 class="text-[17px] font-medium text-zinc-900 leading-tight group-hover:text-black transition-colors">{{ item.title }}</h3>
+        <div class="flex items-center gap-2 mt-1 text-[13px] text-zinc-500">
+          <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> {{ item.downloads || 0 }}</span>
+          <span>•</span>
+          <span class="truncate max-w-[120px]">{{ item.categories?.split(',')[0] || 'Component' }}</span>
+        </div>
       </div>
     </div>
   </div>
