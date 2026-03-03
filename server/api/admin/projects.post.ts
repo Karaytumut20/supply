@@ -24,7 +24,8 @@ export default defineEventHandler(async (event) => {
       isPremium: body.isPremium || false,
       sourceCodeReact: body.sourceCodeReact || '',
       sourceCodeVue: body.sourceCodeVue || '',
-      sourceCodeHtml: body.sourceCodeHtml || ''
+      sourceCodeHtml: body.sourceCodeHtml || '',
+      fileUrl: body.fileUrl || null
     }
   })
 })

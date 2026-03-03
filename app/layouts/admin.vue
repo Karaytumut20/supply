@@ -28,7 +28,9 @@ const pageTitle = computed(() => {
     <!-- Sidebar -->
     <aside :class="isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'" class="fixed md:static top-0 left-0 w-64 bg-white border-r border-zinc-200 flex flex-col h-full z-50 shadow-2xl md:shadow-sm transition-transform duration-300 ease-in-out">
       <div class="h-16 border-b border-zinc-200 flex items-center justify-between px-6 font-black tracking-tight text-xl shrink-0">
-        <span>inspo<span class="text-indigo-600">.admin</span></span>
+        <NuxtLink to="/" class="hover:opacity-80 transition-opacity" title="Return to Homepage">
+          <span>inspo<span class="text-indigo-600">.admin</span></span>
+        </NuxtLink>
         <button @click="isMobileMenuOpen = false" class="md:hidden p-2 -mr-2 text-zinc-400 hover:text-black transition-colors rounded-full hover:bg-zinc-100">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
@@ -63,7 +65,11 @@ const pageTitle = computed(() => {
           </button>
           <h2 class="font-bold text-lg capitalize text-black tracking-tight">{{ pageTitle }}</h2>
         </div>
-        <div id="admin-header-actions"></div>
+        <div id="admin-header-actions" class="flex items-center gap-3">
+           <NuxtLink to="/" class="md:hidden p-2 text-zinc-500 hover:text-black hover:bg-zinc-100 rounded-full transition-colors flex items-center justify-center" aria-label="Return to Homepage">
+             <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+           </NuxtLink>
+        </div>
       </header>
 
       <!-- Main Content -->

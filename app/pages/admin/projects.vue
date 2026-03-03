@@ -10,21 +10,50 @@ const { data: dbCategories } = await useFetch('/api/admin/categories')
 const isUploadModalOpen = ref(false)
 const isSubmitting = ref(false)
 const searchQuery = ref('')
-const newProject = ref({ title: '', description: '', videoUrl: '', sourceUrl: '', demoUrl: '', dependencies: '', price: 0, categories: '', tags: '', techStack: '', rating: 5.0, reviewCount: 0, status: 'Active', isPremium: false, sourceCodeReact: '', sourceCodeVue: '', sourceCodeHtml: '' })
+const newProject = ref({ title: '', description: '', videoUrl: '', sourceUrl: '', demoUrl: '', dependencies: '', price: 0, categories: '', tags: '', techStack: '', rating: 5.0, reviewCount: 0, status: 'Active', isPremium: false, sourceCodeReact: '', sourceCodeVue: '', sourceCodeHtml: '', fileUrl: '' })
+const selectedFile = ref<File | null>(null)
 
 const filteredProjects = computed(() => {
   if(!dbProjects.value) return []
   return dbProjects.value.filter((proj: any) => proj.title.toLowerCase().includes(searchQuery.value.toLowerCase()))
 })
 
+const handleFileSelect = (e: Event) => {
+  const target = e.target as HTMLInputElement
+  if (target.files && target.files.length > 0) {
+    selectedFile.value = target.files[0]
+  }
+}
+
 const handleUpload = async () => {
   isSubmitting.value = true
   try {
+    // 1. Dosya Yükleme (varsa)
+    if (selectedFile.value) {
+      const formData = new FormData()
+      formData.append('file', selectedFile.value)
+
+      const uploadRes: any = await $fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData
+      })
+      
+      if (uploadRes?.url) {
+        newProject.value.fileUrl = uploadRes.url
+      }
+    }
+
+    // 2. Projeyi Veritabanına Ekleme
     await $fetch('/api/admin/projects', { method: 'POST', body: newProject.value })
     await refreshProjects()
     isUploadModalOpen.value = false
-    newProject.value = { title: '', description: '', videoUrl: '', sourceUrl: '', demoUrl: '', dependencies: '', price: 0, categories: '', tags: '', techStack: '', rating: 5.0, reviewCount: 0, status: 'Active', isPremium: false, sourceCodeReact: '', sourceCodeVue: '', sourceCodeHtml: '' }
-  } catch (error) { alert('Hata oluştu!') } finally { isSubmitting.value = false }
+    newProject.value = { title: '', description: '', videoUrl: '', sourceUrl: '', demoUrl: '', dependencies: '', price: 0, categories: '', tags: '', techStack: '', rating: 5.0, reviewCount: 0, status: 'Active', isPremium: false, sourceCodeReact: '', sourceCodeVue: '', sourceCodeHtml: '', fileUrl: '' }
+    selectedFile.value = null
+  } catch (error: any) { 
+    alert('Hata oluştu: ' + (error?.data?.statusMessage || error.message)) 
+  } finally { 
+    isSubmitting.value = false 
+  }
 }
 </script>
 
@@ -94,6 +123,14 @@ const handleUpload = async () => {
                 <input type="checkbox" v-model="newProject.isPremium" class="sr-only peer">
                 <div class="w-10 h-5 bg-zinc-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-black"></div>
               </label>
+            </div>
+
+            <div class="p-4 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2.5 mt-1 cursor-pointer hover:bg-zinc-100 transition-colors">
+               <h4 class="font-bold text-black border-b border-zinc-200 pb-2 text-xs tracking-tight flex items-center justify-between"><span>Upload File</span> <span class="text-zinc-400 font-normal">Optional</span></h4>
+               <div>
+                  <input type="file" @change="handleFileSelect" accept=".zip,.rar,.tar,.js,.ts,.vue,.jsx,.tsx" class="block w-full text-xs text-zinc-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-bold file:bg-zinc-200 file:text-black hover:file:bg-zinc-300 transition-all cursor-pointer outline-none" />
+                  <p class="text-[10px] text-zinc-400 mt-2">Support: ZIP, RAR, JS, VUE, etc. Uploaded files will be available for download.</p>
+               </div>
             </div>
 
             <div class="p-4 bg-zinc-50 rounded-xl border border-zinc-200 space-y-2.5 mt-1">

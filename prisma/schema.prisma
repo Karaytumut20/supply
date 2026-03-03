@@ -54,6 +54,8 @@ model Project {
   techStack       String?
   demoUrl         String?
   dependencies    String?
+  fileUrl         String?
+
   author          User?          @relation("AuthorProjects", fields: [authorId], references: [id])
   purchasedBy     Purchase[]
   reviews         Review[]
