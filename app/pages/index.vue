@@ -8,7 +8,10 @@ useSeoMeta({ title: 'Supply — Premium Web Animations, GSAP & Three.js Componen
 const techBadges = ['GSAP', 'Three.js', 'Canvas API', 'CSS Animations', 'Lottie', 'Vue', 'React', 'WebGL', 'Framer Motion']
 
 const { data: dbCategories } = await useFetch('/api/categories')
-const tags = computed(() => ['All', ...(dbCategories.value?.map(c => c.name) || [])])
+const tags = computed(() => {
+  const cats = dbCategories.value || []
+  return ['All', ...cats.map((c: any) => c.name)]
+})
 const activeTag = ref('All')
 const searchQuery = ref('')
 const priceFilter = ref('all')
@@ -107,23 +110,7 @@ const subscribe = () => {
       </div>
     </div>
 
-    <!-- ──────────── CATEGORY STRIP ──────────── -->
-    <section class="bg-white border-b border-zinc-200/60 px-5 md:px-8 py-6">
-      <div class="max-w-[1600px] mx-auto">
-        <p class="text-[10px] font-bold text-zinc-400 uppercase tracking-[0.25em] mb-4">Browse by Category</p>
-        <div class="flex gap-2.5 overflow-x-auto no-scrollbar pb-1">
-          <button
-            v-for="cat in categories"
-            :key="cat.label"
-            @click="searchQuery = cat.label.split(' ')[0]"
-            :class="cat.color"
-            class="flex items-center gap-1.5 px-4 py-2 rounded-full border text-xs font-bold whitespace-nowrap transition-all duration-200 shrink-0"
-          >
-            <span>{{ cat.icon }}</span> {{ cat.label }}
-          </button>
-        </div>
-      </div>
-    </section>
+
 
     <!-- ──────────── FILTERS BAR ──────────── -->
     <section class="bg-white/80 backdrop-blur-md border-b border-zinc-200/80 px-5 md:px-8 py-4 sticky top-[72px] z-40 transition-all shadow-sm">

@@ -8,63 +8,56 @@ datasource db {
 }
 
 model User {
-  id               String         @id @default(uuid())
+  id               String          @id @default(uuid())
   name             String?
-  email            String         @unique
+  email            String          @unique
   password         String
-  role             Role           @default(USER)
-  isBanned         Boolean        @default(false)
-  plan             Plan           @default(FREE)
-  planSource       String?        @default("UNKNOWN")
-  isPro            Boolean        @default(false)
-  stripeCustomerId String?
-  bio              String?
+  role             Role            @default(USER)
+  createdAt        DateTime        @default(now())
+  isPro            Boolean         @default(false)
   avatar           String?
-  createdAt        DateTime       @default(now())
-
-  tickets          Ticket[]
-  savedProjects    SavedProject[]
-  purchases        Purchase[]
-  createdWorks     Project[]      @relation("AuthorProjects")
-  reviews          Review[]
+  bio              String?
+  plan             Plan            @default(FREE)
+  stripeCustomerId String?
+  isBanned         Boolean         @default(false)
+  planSource       String?         @default("UNKNOWN")
   notifications    Notification[]
   payouts          PayoutRequest[]
+  createdWorks     Project[]       @relation("AuthorProjects")
+  purchases        Purchase[]
+  reviews          Review[]
+  savedProjects    SavedProject[]
+  tickets          Ticket[]
 }
 
 model Project {
-  id               String         @id @default(uuid())
-  title            String
-  videoUrl         String
-  categories       String
-  tags             String?
-  status           String         @default("Active")
-  isPremium        Boolean        @default(false)
-  productType      ProductType    @default(COMPONENT)
-  price            Float          @default(0)
-  description      String?
-  techStack        String?
-  downloads        Int            @default(0)
-  rating           Float          @default(5.0)
-  reviewCount      Int            @default(0)
-  sourceUrl        String?
-
-  // YENİ EKLENENLER (MUST-HAVE ÖZELLİKLER)
-  demoUrl          String?
-  dependencies     String?
-
-  sourceCode       String?        @db.Text
-  sourceCodeReact  String?        @db.Text
-  sourceCodeVue    String?        @db.Text
-  sourceCodeHtml   String?        @db.Text
-
-  createdAt        DateTime       @default(now())
-
-  authorId         String?
-  author           User?          @relation("AuthorProjects", fields: [authorId], references: [id])
-
-  savedBy          SavedProject[]
-  purchasedBy      Purchase[]
-  reviews          Review[]
+  id              String         @id @default(uuid())
+  title           String
+  videoUrl        String
+  categories      String
+  tags            String?
+  status          String         @default("Active")
+  createdAt       DateTime       @default(now())
+  price           Float          @default(0)
+  downloads       Int            @default(0)
+  authorId        String?
+  isPremium       Boolean        @default(false)
+  productType     ProductType    @default(COMPONENT)
+  sourceCode      String?
+  description     String?
+  rating          Float          @default(5.0)
+  reviewCount     Int            @default(0)
+  sourceCodeHtml  String?
+  sourceCodeReact String?
+  sourceCodeVue   String?
+  sourceUrl       String?
+  techStack       String?
+  demoUrl         String?
+  dependencies    String?
+  author          User?          @relation("AuthorProjects", fields: [authorId], references: [id])
+  purchasedBy     Purchase[]
+  reviews         Review[]
+  savedBy         SavedProject[]
 
   @@index([status])
   @@index([isPremium])
@@ -74,12 +67,12 @@ model Project {
 model Review {
   id        String   @id @default(uuid())
   rating    Int
-  comment   String?  @db.Text
+  comment   String?
   userId    String
   projectId String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
   @@index([projectId])
@@ -89,11 +82,11 @@ model Purchase {
   id          String   @id @default(uuid())
   userId      String
   projectId   String
+  createdAt   DateTime @default(now())
   pricePaid   Float?   @default(0)
   licenseType String   @default("STANDARD")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
   @@index([userId])
@@ -104,9 +97,9 @@ model SavedProject {
   id        String   @id @default(uuid())
   userId    String
   projectId String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectId])
   @@index([userId])
@@ -119,8 +112,8 @@ model Ticket {
   message   String
   status    String   @default("OPEN")
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([status])
@@ -139,8 +132,8 @@ model Notification {
   message   String
   link      String?
   isRead    Boolean  @default(false)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([isRead])
