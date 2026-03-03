@@ -12,9 +12,9 @@ if (!userPending.value && !user.value) {
   if (typeof window !== 'undefined') window.location.href = '/sign-in'
 }
 
-const { data: dashboardData, pending: dashPending } = await useFetch(user.value ? '/api/user/dashboard' : '')
-const { data: billingData } = await useFetch(user.value ? '/api/user/billing' : '')
-const { data: creatorStats } = await useFetch(user.value ? '/api/creator/stats' : '')
+const { data: dashboardData, pending: dashPending } = useLazyFetch(user.value ? '/api/user/dashboard' : '')
+const { data: billingData } = useLazyFetch(user.value ? '/api/user/billing' : '')
+const { data: creatorStats } = useLazyFetch(user.value ? '/api/creator/stats' : '')
 
 const route = useRoute()
 const router = useRouter()
@@ -23,6 +23,10 @@ const activeTab = ref(route.query.tab ? String(route.query.tab) : 'overview')
 watch(() => route.query.tab, (newTab) => { if (newTab) activeTab.value = String(newTab) })
 
 const setTab = (tab: string) => {
+  if (tab === 'admin') {
+    router.push('/admin')
+    return
+  }
   activeTab.value = tab
   router.push({ query: { ...route.query, tab } })
 }

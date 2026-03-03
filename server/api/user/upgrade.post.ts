@@ -1,15 +1,26 @@
 import { PrismaClient } from '@prisma/client'
+import { requireAuth, signToken } from '../../utils/jwt'
+
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-  const userId = getCookie(event, 'auth_token')
-  if(!userId) throw createError({ statusCode: 401, statusMessage: 'Lütfen giriş yapın.' })
+  const user = await requireAuth(event) // Token yerine doğru kullanıcı ID'sini getirir
 
-  // Mock Ödeme İşlemi (Burada gerçekte Stripe Webhook veya Iyzico onayı olur)
+  // Veritabanında kullanıcıyı PRO olarak güncelle
   const updatedUser = await prisma.user.update({
-    where: { id: userId },
-    data: { isPro: true }
+    where: { id: user.userId },
+    data: { isPro: true, plan: 'PRO', planSource: 'STRIPE' }
   })
 
-  return { success: true, message: 'Hoş geldin! Artık Pro üyesin.' }
+  // Yeni yetkilerle token'ı güncelle (böylece site kullanıcının anında PRO olduğunu anlar)
+  const token = signToken({
+    userId: updatedUser.id,
+    role: updatedUser.role,
+    plan: updatedUser.plan,
+    isPro: updatedUser.isPro
+  })
+
+  setCookie(event, 'auth_token', token, { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 7 })
+
+  return { success: true, message: 'Harika! Artık Pro üyesin.', user: updatedUser }
 })

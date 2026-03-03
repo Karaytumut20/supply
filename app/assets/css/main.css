@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 html, body {
-  overscroll-behavior: none;
+  /* overscroll-behavior: none; */
   @apply bg-white text-black antialiased selection:bg-zinc-800 selection:text-white;
 }
 
@@ -65,3 +65,5 @@ html.lenis, html.lenis body { height: auto; }
 .animate-slow-pan {
   animation: slowPan 20s ease-in-out infinite;
 }
+
+html { scroll-behavior: smooth; }

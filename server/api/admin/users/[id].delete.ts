@@ -5,8 +5,6 @@ const prisma = new PrismaClient()
 export default defineEventHandler(async (event) => {
   const admin = await requireAuth(event)
   if (admin.role !== 'ADMIN') throw createError({ statusCode: 403 })
-  return await prisma.user.findMany({
-    select: { id: true, name: true, email: true, role: true, isPro: true, plan: true, isBanned: true, planSource: true, createdAt: true },
-    orderBy: { createdAt: 'desc' }
-  })
+  const id = getRouterParam(event, 'id')
+  return await prisma.user.delete({ where: { id } })
 })

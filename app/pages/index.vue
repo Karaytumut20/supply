@@ -4,20 +4,11 @@ import { useToast } from '#imports'
 
 useSeoMeta({ title: 'Supply — Premium Web Animations, GSAP & Three.js Components' })
 
-const categories = [
-  { label: 'GSAP Animations', icon: '✦', color: 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' },
-  { label: 'Three.js Scenes', icon: '◈', color: 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' },
-  { label: 'Page Transitions', icon: '⟡', color: 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' },
-  { label: 'Scroll Effects', icon: '↕', color: 'bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100' },
-  { label: 'UI Components', icon: '◻', color: 'bg-zinc-100 text-zinc-700 border-zinc-200 hover:bg-zinc-200' },
-  { label: 'Hero Sections', icon: '★', color: 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' },
-  { label: 'Navigation', icon: '≡', color: 'bg-teal-50 text-teal-700 border-teal-200 hover:bg-teal-100' },
-  { label: 'Cards & Grids', icon: '▦', color: 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' },
-]
 
 const techBadges = ['GSAP', 'Three.js', 'Canvas API', 'CSS Animations', 'Lottie', 'Vue', 'React', 'WebGL', 'Framer Motion']
 
-const tags = ['All', 'Hero', 'Navigation', 'Page Transition', 'Card', 'Interaction']
+const { data: dbCategories } = await useFetch('/api/categories')
+const tags = computed(() => ['All', ...(dbCategories.value?.map(c => c.name) || [])])
 const activeTag = ref('All')
 const searchQuery = ref('')
 const priceFilter = ref('all')
@@ -25,7 +16,7 @@ const sortBy = ref('newest')
 const email = ref('')
 const { addToast } = useToast()
 
-const { data: dbProjects, pending } = await useFetch('/api/projects')
+const { data: dbProjects, pending } = useLazyFetch('/api/projects')
 
 const items = computed(() => {
   if (!dbProjects.value) return []
@@ -71,9 +62,9 @@ const subscribe = () => {
     <section class="bg-black text-white pt-40 pb-24 px-5 md:px-8 w-full relative overflow-hidden flex flex-col items-center text-center">
       <!-- Ambient blobs -->
       <div class="absolute inset-0 z-0 pointer-events-none">
-        <div class="absolute top-[-10%] left-[15%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[140px]"></div>
-        <div class="absolute bottom-[-10%] right-[10%] w-[500px] h-[500px] bg-amber-500/15 rounded-full blur-[120px]"></div>
-        <div class="absolute top-[30%] right-[30%] w-[300px] h-[300px] bg-purple-600/15 rounded-full blur-[100px]"></div>
+        <div class="absolute top-[-10%] left-[15%] w-[600px] h-[600px] bg-indigo-600/20 rounded-full blur-[60px]"></div>
+        <div class="absolute bottom-[-10%] right-[10%] w-[500px] h-[500px] bg-amber-500/15 rounded-full blur-[50px]"></div>
+        <div class="absolute top-[30%] right-[30%] w-[300px] h-[300px] bg-purple-600/15 rounded-full blur-[40px]"></div>
       </div>
       <!-- Grid overlay -->
       <div class="absolute inset-0 z-0 opacity-[0.025]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 60px 60px;"></div>
@@ -135,7 +126,7 @@ const subscribe = () => {
     </section>
 
     <!-- ──────────── FILTERS BAR ──────────── -->
-    <section class="bg-white/80 backdrop-blur-xl border-b border-zinc-200/80 px-5 md:px-8 py-4 sticky top-[72px] z-40 transition-all shadow-sm">
+    <section class="bg-white/80 backdrop-blur-md border-b border-zinc-200/80 px-5 md:px-8 py-4 sticky top-[72px] z-40 transition-all shadow-sm">
       <div class="w-full max-w-[1600px] mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
 
         <div class="flex items-center gap-6 overflow-x-auto no-scrollbar w-full md:w-auto">
@@ -230,8 +221,8 @@ const subscribe = () => {
     <!-- ──────────── NEWSLETTER CTA ──────────── -->
     <section class="bg-black text-white px-5 md:px-8 py-24 relative overflow-hidden">
       <div class="absolute inset-0 pointer-events-none">
-        <div class="absolute top-0 left-1/3 w-[400px] h-[400px] bg-indigo-600/20 rounded-full blur-[120px]"></div>
-        <div class="absolute bottom-0 right-1/3 w-[300px] h-[300px] bg-purple-600/15 rounded-full blur-[100px]"></div>
+        <div class="absolute top-0 left-1/3 w-[400px] h-[400px] bg-indigo-600/20 rounded-full blur-[50px]"></div>
+        <div class="absolute bottom-0 right-1/3 w-[300px] h-[300px] bg-purple-600/15 rounded-full blur-[40px]"></div>
       </div>
       <div class="max-w-2xl mx-auto text-center relative z-10">
         <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-bold text-zinc-400 tracking-widest uppercase mb-6">
@@ -250,7 +241,7 @@ const subscribe = () => {
       </div>
     </section>
 
-    <ProductModal :isOpen="isModalOpen" :item="selectedItem" @close="isModalOpen = false" />
+    <LazyProductModal :isOpen="isModalOpen" :item="selectedItem" @close="isModalOpen = false" />
   </div>
 </template>
 

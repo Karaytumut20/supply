@@ -69,7 +69,7 @@ const quickSave = async (e: Event) => {
       </div>
 
       <div class="w-full relative rounded-xl overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.06)] bg-black transform transition-transform duration-500 group-hover:scale-[1.04]">
-         <video autoplay loop muted playsinline class="w-full aspect-video object-cover pointer-events-none">
+         <video style="will-change: transform; transform: translateZ(0);" preload="metadata" autoplay loop muted playsinline class="w-full aspect-video object-cover pointer-events-none">
             <source :src="item.video || item.videoUrl" type="video/mp4" />
          </video>
          <div class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">

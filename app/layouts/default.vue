@@ -40,7 +40,7 @@ const toggleUserMenu = () => {
 <template>
   <div class="min-h-screen bg-white font-sans flex flex-col">
 
-    <header class="fixed top-0 w-full z-50 px-5 md:px-8 py-4 flex items-center justify-between transition-all backdrop-blur-xl bg-white/80 border-b border-zinc-200/50">
+    <header class="fixed top-0 w-full z-50 px-5 md:px-8 py-4 flex items-center justify-between transition-all backdrop-blur-md bg-white/95 border-b border-zinc-200/50">
       <div class="flex items-center">
         <NuxtLink to="/" class="font-bold text-xl tracking-tight flex items-center gap-2 group">
           <div class="flex gap-1 transform transition-transform group-hover:scale-110">
@@ -59,7 +59,7 @@ const toggleUserMenu = () => {
         <div class="w-px h-5 bg-zinc-200 hidden sm:block mx-1"></div>
 
         <template v-if="user">
-          <NuxtLink v-if="!user.isPro" to="/pricing" class="relative group hidden sm:flex items-center justify-center">
+          <NuxtLink v-if="!user.isPro && user.plan !== 'PRO'" to="/pricing" class="relative group hidden sm:flex items-center justify-center">
              <div class="absolute inset-0 bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 rounded-full blur opacity-40 group-hover:opacity-75 transition duration-200"></div>
              <span class="relative bg-white text-black px-4 py-1.5 rounded-full border border-zinc-200 text-sm font-bold flex items-center gap-1 active:scale-95 transition-transform">
                <svg class="w-4 h-4 text-purple-500" viewBox="0 0 20 20" fill="currentColor"><path d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.381z"></path></svg>
@@ -149,7 +149,7 @@ const toggleUserMenu = () => {
     <div v-if="isUserMenuOpen || isNotifMenuOpen" @click="isUserMenuOpen=false; isNotifMenuOpen=false" class="fixed inset-0 z-40"></div>
 
     <main class="flex-grow pt-[72px] relative z-10"><slot /></main>
-    <UiAboutModal :isOpen="isAboutOpen" @close="isAboutOpen = false" />
+    <LazyUiAboutModal :isOpen="isAboutOpen" @close="isAboutOpen = false" />
     <UiToast />
   </div>
 </template>

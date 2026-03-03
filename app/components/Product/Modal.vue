@@ -148,7 +148,7 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                            <span class="font-black text-lg">${{ item?.price }}</span>
                          </div>
                          <p class="text-sm text-zinc-500">For a single personal or client project.</p>
-                         <div v-if="selectedLicense === 'STANDARD'" class="absolute top-4 right-4 w-4 h-4 bg-black rounded-full border-4 border-white shadow-sm"></div>
+                         
                        </div>
 
                        <div @click="selectedLicense = 'COMMERCIAL'" :class="selectedLicense === 'COMMERCIAL' ? 'border-indigo-600 bg-indigo-50/50' : 'border-zinc-200 bg-white'" class="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:border-zinc-300 relative">
@@ -157,7 +157,7 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                            <span class="font-black text-lg text-indigo-700">${{ item?.price * 3 }}</span>
                          </div>
                          <p class="text-sm text-indigo-700/70">For unlimited projects, SaaS, or templates.</p>
-                         <div v-if="selectedLicense === 'COMMERCIAL'" class="absolute top-4 right-4 w-4 h-4 bg-indigo-600 rounded-full border-4 border-white shadow-sm"></div>
+                         
                        </div>
                      </div>
                    </div>
