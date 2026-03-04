@@ -4,17 +4,19 @@ const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
   const user = await requireAuth(event)
-  const userId = user.userId
+
+  if (user.role !== 'ADMIN') {
+    throw createError({ statusCode: 403, statusMessage: 'Yetkisiz islem' })
+  }
 
   const projects = await prisma.project.findMany({
-    where: { authorId: userId },
     include: { purchasedBy: true }
   })
 
-  const totalSales = projects.reduce((acc, p) => acc + p.purchasedBy.length, 0)
-  const totalRevenue = projects.reduce((acc, p) => {
-     return acc + p.purchasedBy.reduce((sum, purchase) => sum + (purchase.pricePaid || 0), 0)
-  }, 0)
+  const purchases = await prisma.purchase.findMany()
+
+  const totalSales = purchases.length
+  const totalRevenue = purchases.reduce((acc, p) => acc + (p.pricePaid || 0), 0)
 
   return { projects, totalSales, totalRevenue }
 })

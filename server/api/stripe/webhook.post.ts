@@ -46,7 +46,7 @@ export default defineEventHandler(async (event) => {
             // 1. Sepet içeriklerini bul
             const cart = await prisma.cart.findUnique({
                 where: { id: cartId },
-                include: { items: true }
+                include: { items: { include: { project: true } } }
             })
 
             if (!cart || cart.items.length === 0) {
@@ -75,6 +75,18 @@ export default defineEventHandler(async (event) => {
             await prisma.cartItem.deleteMany({ where: { cartId: cart.id } })
 
             console.log(`${logPrefix} Successfully processed order for user ${userId}`)
+
+            // 4. Müşteriye E-posta Gönder (Resend)
+            try {
+                const user = await prisma.user.findUnique({ where: { id: userId } })
+                if (user && user.email) {
+                    const { sendPurchaseEmail } = await import('../../utils/email')
+                    await sendPurchaseEmail(user.email, cart.items)
+                    console.log(`${logPrefix} Sent purchase email to ${user.email}`)
+                }
+            } catch (emailError) {
+                console.error(`${logPrefix} Email delivery failed:`, emailError)
+            }
 
         } catch (dbError) {
             console.error(`${logPrefix} Database error processing session:`, dbError)

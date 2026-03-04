@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useToast, useCart, useCookie, useRequestHeaders, useHead } from '#imports'
+import { marked } from 'marked'
 
 useHead({
   script: [
@@ -138,6 +139,11 @@ const submitReview = async () => {
    }
 }
 
+const renderedDocs = computed(() => {
+  if (!props.item?.documentation) return ''
+  return marked.parse(props.item.documentation, { async: false }) as string
+})
+
 watch(() => props.isOpen, (val) => {
   if (typeof document !== 'undefined') document.body.style.overflow = val ? 'hidden' : ''
   if (val && props.item?.id) {
@@ -168,6 +174,9 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                          :src="activeMedia.url" 
                          camera-controls 
                          auto-rotate 
+                         environment-image="neutral"
+                         exposure="1.2"
+                         shadow-intensity="1"
                          class="w-full h-full outline-none bg-black cursor-grab active:cursor-grabbing"
                        ></model-viewer>
                        <video 
@@ -203,10 +212,11 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
             <div class="w-full lg:w-[45%] flex flex-col bg-white relative flex-1 min-h-0 lg:h-full">
 
                <div class="flex flex-wrap items-end sm:items-center justify-between border-b border-zinc-200 px-6 sm:px-8 pt-6 pb-0 gap-4 shrink-0 w-full">
-                 <div class="flex gap-4 sm:gap-6">
-                    <button @click="activeTab = 'overview'" :class="activeTab === 'overview' ? 'text-black border-black' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-4 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Overview</button>
-                    <button @click="activeTab = 'code'" :class="activeTab === 'code' ? 'text-black border-black' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-4 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Source Code</button>
-                    <button @click="activeTab = 'reviews'" :class="activeTab === 'reviews' ? 'text-black border-black' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-4 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Reviews ({{ dbReviews?.length || 0 }})</button>
+                 <div class="flex gap-4 sm:gap-6 overflow-x-auto no-scrollbar pb-4 shrink-0 max-w-full">
+                    <button @click="activeTab = 'overview'" :class="activeTab === 'overview' ? 'text-black border-black/100' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-3.5 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Overview</button>
+                    <button v-if="item?.documentation" @click="activeTab = 'docs'" :class="activeTab === 'docs' ? 'text-black border-black/100' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-3.5 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">How to Use</button>
+                    <button @click="activeTab = 'code'" :class="activeTab === 'code' ? 'text-black border-black/100' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-3.5 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Source Code</button>
+                    <button @click="activeTab = 'reviews'" :class="activeTab === 'reviews' ? 'text-black border-black/100' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-3.5 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Reviews ({{ dbReviews?.length || 0 }})</button>
                  </div>
 
                  <div class="flex items-center gap-1 sm:gap-3 pb-4">
@@ -250,18 +260,33 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                            <h5 class="font-bold text-black">Standard License</h5>
                            <span class="font-black text-lg">${{ item?.price }}</span>
                          </div>
-                         <p class="text-sm text-zinc-500">For a single personal or client project.</p>
-                         
+                         <p class="text-sm text-zinc-500 mb-3">For a single personal or client project.</p>
+                         <ul class="space-y-1.5 mt-2 border-t border-zinc-200/60 pt-3">
+                           <li class="flex items-center gap-2 text-xs text-zinc-600 font-medium"><svg class="w-3.5 h-3.5 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Single End Product</li>
+                           <li class="flex items-center gap-2 text-xs text-zinc-600 font-medium"><svg class="w-3.5 h-3.5 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Included Source Files (HTML, Vue, React)</li>
+                         </ul>
                        </div>
 
-                       <div @click="selectedLicense = 'COMMERCIAL'" :class="selectedLicense === 'COMMERCIAL' ? 'border-indigo-600 bg-indigo-50/50' : 'border-zinc-200 bg-white'" class="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:border-zinc-300 relative">
+                       <div @click="selectedLicense = 'COMMERCIAL'" :class="selectedLicense === 'COMMERCIAL' ? 'border-indigo-600 bg-indigo-50/50' : 'border-zinc-200 bg-white'" class="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:border-zinc-300 relative mt-3">
                          <div class="flex justify-between items-center mb-1">
                            <h5 class="font-bold text-indigo-900">Commercial / Extended</h5>
                            <span class="font-black text-lg text-indigo-700">${{ item?.price * 3 }}</span>
                          </div>
-                         <p class="text-sm text-indigo-700/70">For unlimited projects, SaaS, or templates.</p>
-                         
+                         <p class="text-sm text-indigo-700/70 mb-3">For unlimited projects, SaaS, or templates.</p>
+                         <ul class="space-y-1.5 mt-2 border-t border-indigo-200/50 pt-3">
+                           <li class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Unlimited End Products</li>
+                           <li class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Resale in Templates Allowed</li>
+                           <li v-if="item?.productType === '3D_MODEL'" class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Native 3D Assets Included (.blend/.fbx)</li>
+                           <li v-else class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Figma / Design Files Included</li>
+                         </ul>
                        </div>
+                     </div>
+                   </div>
+
+                   <div v-if="activeTab === 'docs'" class="animate-in fade-in h-full flex flex-col">
+                     <div class="bg-white p-6 md:p-8 rounded-2xl border border-zinc-200 shadow-sm">
+                       <h3 class="text-xl font-bold text-black border-b border-zinc-100 pb-4 mb-5">Documentation & Usage</h3>
+                       <div class="text-[13px] md:text-sm text-zinc-700 leading-relaxed font-medium space-y-4 [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:text-black [&>h1]:mt-6 [&>h1]:mb-3 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:text-black [&>h2]:mt-5 [&>h2]:mb-2 [&>p]:mb-3 [&>pre]:bg-[#0d0d0d] [&>pre]:text-zinc-300 [&>pre]:p-4 [&>pre]:rounded-xl [&>pre]:overflow-x-auto [&>pre]:my-4 [&>code]:bg-zinc-100 [&>code]:text-pink-600 [&>code]:px-1.5 [&>code]:py-0.5 [&>code]:rounded-md [&>ul]:list-disc [&>ul]:pl-5 [&>ul]:space-y-1.5 [&>ul]:my-3 [&>a]:text-indigo-600 [&>a]:hover:underline" v-html="renderedDocs"></div>
                      </div>
                    </div>
 

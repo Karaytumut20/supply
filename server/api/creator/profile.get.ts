@@ -2,27 +2,27 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-  const query = getQuery(event)
-  const creatorId = query.id as string
-
-  if(!creatorId) throw createError({ statusCode: 400, statusMessage: 'Creator ID gerekli' })
-
-  const creator = await prisma.user.findUnique({
-    where: { id: creatorId },
+  // Tek satıcılı mağaza mantığı: Sadece ADMIN rolündeki ilk/ana kullanıcıyı getir
+  const storeOwner = await prisma.user.findFirst({
+    where: { role: 'ADMIN' },
     select: {
       id: true,
       name: true,
       bio: true,
       avatar: true,
       createdAt: true,
-      createdWorks: {
-        where: { status: 'Active' },
-        orderBy: { downloads: 'desc' }
-      }
     }
   })
 
-  if(!creator) throw createError({ statusCode: 404, statusMessage: 'Satıcı bulunamadı' })
+  // Tüm aktif projeler bu mağazaya aittir
+  const createdWorks = await prisma.project.findMany({
+    where: { status: 'Active' },
+    orderBy: { downloads: 'desc' }
+  })
 
-  return creator
+  if (!storeOwner) {
+    return { name: 'Inspo Dashboard', bio: 'Premium UI assets store', createdWorks }
+  }
+
+  return { ...storeOwner, createdWorks }
 })

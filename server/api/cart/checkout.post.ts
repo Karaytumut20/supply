@@ -6,7 +6,7 @@ const prisma = new PrismaClient()
 export default defineEventHandler(async (event) => {
     const cookies = parseCookies(event)
     const token = cookies.auth_token
-    if (!token) return createError({ statusCode: 401, statusMessage: 'Unauthorized' })
+    if (!token) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
 
     try {
         const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'super-secret-key')
@@ -18,12 +18,17 @@ export default defineEventHandler(async (event) => {
         })
 
         if (!cart || cart.items.length === 0) {
-            return createError({ statusCode: 400, statusMessage: 'Sepetiniz boş' })
+            throw createError({ statusCode: 400, statusMessage: 'Sepetiniz boş' })
+        }
+
+        const totalAmount = cart.items.reduce((sum, item) => sum + item.price, 0)
+        if (totalAmount === 0) {
+            throw createError({ statusCode: 400, statusMessage: 'Ücretsiz ürünler sepet olmadan doğrudan indirilebilir.' })
         }
 
         // Stripe entegrasyonu (Ortam değişkeninden anahtarı al)
         const stripeKey = process.env.STRIPE_SECRET_KEY || 'sk_test_mock'
-        const stripe = new (await import('stripe')).default(stripeKey, { apiVersion: '2025-02-24.acacia' as any })
+        const stripe = new (await import('stripe')).default(stripeKey, { apiVersion: '2022-11-15' as any })
 
         // Sepetteki ürünleri Stripe formatına (line_items) dönüştür
         const line_items = cart.items.map(item => ({
@@ -32,7 +37,7 @@ export default defineEventHandler(async (event) => {
                 product_data: {
                     name: `${item.project.title} (${item.licenseType} LİSANS)`,
                     description: item.project.description || '',
-                    images: item.project.videoUrl ? [item.project.videoUrl] : [] // Opsiyonel, sadece tam URL ise işe yarar
+                    images: item.project.images && item.project.images.length > 0 ? [item.project.images[0]] : undefined
                 },
                 unit_amount: Math.round(item.price * 100), // Cent cinsinden
             },
@@ -59,6 +64,6 @@ export default defineEventHandler(async (event) => {
         return { success: true, url: session.url }
     } catch (err: any) {
         console.error('Checkout error:', err)
-        return createError({ statusCode: 500, statusMessage: 'Ödeme oturumu oluşturulurken bir hata oluştu: ' + err.message })
+        throw createError({ statusCode: 500, statusMessage: err.message || 'Ödeme oturumu oluşturulurken bir hata oluştu' })
     }
 })

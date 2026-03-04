@@ -1,7 +1,6 @@
 import { requireAuth } from '../../utils/jwt'
 import { PrismaClient } from '@prisma/client'
-import fs from 'node:fs'
-import path from 'node:path'
+import { generatePresignedUrl } from '../../utils/s3'
 
 const prisma = new PrismaClient()
 
@@ -37,7 +36,7 @@ export default defineEventHandler(async (event) => {
         const purchase = await prisma.purchase.findUnique({
             where: {
                 userId_projectId: {
-                    userId: user.id,
+                    userId: user.userId,
                     projectId: project.id
                 }
             }
@@ -51,35 +50,18 @@ export default defineEventHandler(async (event) => {
         throw createError({ statusCode: 403, statusMessage: 'Bu dosyayı indirmek için satın almanız vaya PRO üye olmanız gerekmektedir.' })
     }
 
-    // 4. Resolve File Path
-    // Handle both old formats (/uploads/projects/file.zip) and new format (file.zip)
-    let filename = project.fileUrl
-    if (filename.startsWith('/uploads/projects/')) {
-        filename = filename.replace('/uploads/projects/', '')
+    // 4. Resolve File Key and generate signed URL
+    let fileKey = project.fileUrl
+    if (fileKey.startsWith('/uploads/projects/')) {
+        fileKey = fileKey.replace('/uploads/projects/', 'projects/')
     }
 
-    const filePath = path.join(process.cwd(), 'server', 'storage', 'projects', filename)
-
-    if (!fs.existsSync(filePath)) {
-        // Fallback for files that might still be in public (before migration)
-        const oldFilePath = path.join(process.cwd(), 'public', 'uploads', 'projects', filename)
-        if (!fs.existsSync(oldFilePath)) {
-            throw createError({ statusCode: 404, statusMessage: 'Fiziksel dosya sunucuda bulunamadı.' })
-        }
-
-        // Serve from old path if it hasn't been migrated yet
-        const stat = fs.statSync(oldFilePath)
-        setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}"`)
-        setResponseHeader(event, 'Content-Type', 'application/octet-stream')
-        setResponseHeader(event, 'Content-Length', stat.size)
-        return sendStream(event, fs.createReadStream(oldFilePath))
+    try {
+        // 15 minutes = 900 seconds
+        const signedUrl = await generatePresignedUrl(fileKey, 900)
+        return sendRedirect(event, signedUrl, 302)
+    } catch (err) {
+        console.error('Presigned URL error:', err)
+        throw createError({ statusCode: 500, statusMessage: 'Istenilen dosya icin guvenli indirme linki uretilemedi.' })
     }
-
-    // 5. Stream the File
-    const stat = fs.statSync(filePath)
-    setResponseHeader(event, 'Content-Disposition', `attachment; filename="${filename}"`)
-    setResponseHeader(event, 'Content-Type', 'application/octet-stream')
-    setResponseHeader(event, 'Content-Length', stat.size)
-
-    return sendStream(event, fs.createReadStream(filePath))
 })

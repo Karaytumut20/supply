@@ -22,7 +22,6 @@ model User {
   isBanned         Boolean         @default(false)
   planSource       String?         @default("UNKNOWN")
   notifications    Notification[]
-  payouts          PayoutRequest[]
   createdWorks     Project[]       @relation("AuthorProjects")
   purchases        Purchase[]
   reviews          Review[]
@@ -57,6 +56,8 @@ model Project {
   dependencies    String?
   fileUrl         String?
   images          String[]       @default([])
+  documentation   String?
+  features        String[]       @default([])
 
   author          User?          @relation("AuthorProjects", fields: [authorId], references: [id])
   purchasedBy     Purchase[]
@@ -167,17 +168,6 @@ model Notification {
 
   @@index([userId])
   @@index([isRead])
-}
-
-model PayoutRequest {
-  id        String   @id @default(uuid())
-  userId    String
-  amount    Float
-  status    String   @default("PENDING")
-  createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
 }
 
 enum Role {

@@ -82,9 +82,10 @@ const handlePayment = async () => {
                 </div>
               </div>
 
-              <button @click="handlePayment" :disabled="isProcessing || isCartLoading" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-[64px] rounded-2xl font-bold shadow-[0_10px_30px_rgba(79,70,229,0.2)] flex items-center justify-center gap-2 disabled:opacity-70 text-[16px] transition-all active:scale-95 focus:ring-4 focus:ring-indigo-300 mt-4">
-                <Icon v-if="!isProcessing" name="lucide:lock" class="w-4 h-4 opacity-70" />
+              <button @click="handlePayment" :disabled="isProcessing || isCartLoading || cartTotal === 0" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-[64px] rounded-2xl font-bold shadow-[0_10px_30px_rgba(79,70,229,0.2)] flex items-center justify-center gap-2 disabled:opacity-70 text-[16px] transition-all active:scale-95 focus:ring-4 focus:ring-indigo-300 mt-4">
+                <Icon v-if="!isProcessing && cartTotal > 0" name="lucide:lock" class="w-4 h-4 opacity-70" />
                 <span v-if="isProcessing">Güvenli Ödeme İşleniyor...</span>
+                <span v-else-if="cartTotal === 0">Ücretsiz Ürünler Direkt İndirilebilir</span>
                 <span v-else>Stripe ile Güvenli Ödeme Yap (${{ cartTotal }})</span>
               </button>
 
