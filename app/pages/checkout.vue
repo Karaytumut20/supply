@@ -82,39 +82,20 @@ const handlePayment = async () => {
                 </div>
               </div>
 
-              <div class="space-y-4 mb-8">
-                <div>
-                  <label class="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Ad Soyad</label>
-                  <input type="text" placeholder="Kart üzerindeki isim" class="w-full bg-zinc-50 border border-zinc-200 text-black px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-black transition-all font-medium" />
-                </div>
-                <div>
-                  <label class="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">Kart Numarası</label>
-                  <div class="relative">
-                    <Icon name="lucide:credit-card" class="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-400" />
-                    <input type="text" placeholder="0000 0000 0000 0000" class="w-full bg-zinc-50 border border-zinc-200 text-black pl-12 pr-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-black transition-all font-mono" />
-                  </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                  <div>
-                    <label class="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">SKT</label>
-                    <input type="text" placeholder="MM/YY" class="w-full bg-zinc-50 border border-zinc-200 text-black px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-black transition-all font-mono" />
-                  </div>
-                  <div>
-                    <label class="block text-xs font-bold text-zinc-500 uppercase tracking-wider mb-2">CVC</label>
-                    <input type="text" placeholder="123" class="w-full bg-zinc-50 border border-zinc-200 text-black px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-black transition-all font-mono" />
-                  </div>
-                </div>
-              </div>
-
-              <button @click="handlePayment" :disabled="isProcessing || isCartLoading" class="w-full bg-black hover:bg-zinc-800 text-white h-[64px] rounded-2xl font-bold shadow-[0_10px_30px_rgba(0,0,0,0.15)] flex items-center justify-center gap-2 disabled:opacity-70 text-[16px] transition-all active:scale-95 focus:ring-4 focus:ring-zinc-300">
+              <button @click="handlePayment" :disabled="isProcessing || isCartLoading" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-[64px] rounded-2xl font-bold shadow-[0_10px_30px_rgba(79,70,229,0.2)] flex items-center justify-center gap-2 disabled:opacity-70 text-[16px] transition-all active:scale-95 focus:ring-4 focus:ring-indigo-300 mt-4">
                 <Icon v-if="!isProcessing" name="lucide:lock" class="w-4 h-4 opacity-70" />
                 <span v-if="isProcessing">Güvenli Ödeme İşleniyor...</span>
-                <span v-else>Güvenli Ödeme Yap (${{ cartTotal }})</span>
+                <span v-else>Stripe ile Güvenli Ödeme Yap (${{ cartTotal }})</span>
               </button>
 
-              <p class="text-xs text-center text-zinc-400 mt-6 flex items-center justify-center gap-1.5 font-medium">
-                <Icon name="lucide:shield-check" class="w-4 h-4 text-emerald-500" /> 256-bit SSL Tam Korumalı Ödeme
-              </p>
+              <div class="mt-6 flex flex-col items-center gap-3">
+                <p class="text-xs text-center text-zinc-400 flex items-center justify-center gap-1.5 font-medium">
+                  <Icon name="lucide:shield-check" class="w-4 h-4 text-emerald-500" /> 256-bit SSL Tam Korumalı Ödeme
+                </p>
+                <div class="flex items-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all cursor-pointer">
+                  <Icon name="logos:stripe" class="h-6 w-auto" />
+                </div>
+              </div>
            </div>
         </div>
 

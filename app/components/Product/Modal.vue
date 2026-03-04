@@ -1,6 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { useToast, useCart, useCookie, useRequestHeaders } from '#imports'
+import { useToast, useCart, useCookie, useRequestHeaders, useHead } from '#imports'
+
+useHead({
+  script: [
+    {
+      src: 'https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js',
+      type: 'module'
+    }
+  ]
+})
 
 const props = defineProps<{ isOpen: boolean, item: any }>()
 const emit = defineEmits(['close'])
@@ -87,8 +96,53 @@ const displayCategories = computed(() => {
   return props.item.categories
 })
 
+const mediaItems = computed(() => {
+  const items = []
+  if (props.item?.productType === '3D_MODEL' && props.item?.demoUrl) {
+    items.push({ type: '3d', url: props.item.demoUrl })
+  } else if (props.item?.video || props.item?.videoUrl) {
+    items.push({ type: 'video', url: props.item?.video || props.item?.videoUrl })
+  }
+  if (props.item?.images && Array.isArray(props.item.images)) {
+    props.item.images.forEach((img: string) => items.push({ type: 'image', url: img }))
+  }
+  return items
+})
+
+const activeMediaIndex = ref(0)
+const activeMedia = computed(() => mediaItems.value[activeMediaIndex.value])
+
+watch(() => props.item, () => {
+  activeMediaIndex.value = 0
+}, { immediate: true })
+
+const { data: dbReviews, refresh: refreshReviews } = await useFetch(() => `/api/projects/${props.item?.id || ''}/reviews`, { immediate: false })
+const reviewForm = ref({ rating: 5, comment: '' })
+const isSubmittingReview = ref(false)
+
+const submitReview = async () => {
+   if (!user.value) { addToast('Lütfen giriş yapın', 'error'); return; }
+   isSubmittingReview.value = true
+   try {
+     await $fetch(`/api/projects/${props.item.id}/reviews`, {
+       method: 'POST',
+       body: reviewForm.value
+     })
+     addToast('Yorum başarıyla eklendi', 'success')
+     reviewForm.value = { rating: 5, comment: '' }
+     await refreshReviews()
+   } catch (e: any) {
+     addToast(e.data?.message || 'Yorum gönderilemedi', 'error')
+   } finally {
+     isSubmittingReview.value = false
+   }
+}
+
 watch(() => props.isOpen, (val) => {
   if (typeof document !== 'undefined') document.body.style.overflow = val ? 'hidden' : ''
+  if (val && props.item?.id) {
+    refreshReviews()
+  }
 })
 onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.overflow = '' })
 </script>
@@ -107,8 +161,41 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                <div class="absolute inset-0 opacity-[0.03]" style="background-image: linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px); background-size: 40px 40px;"></div>
                <div class="absolute -top-[20%] -left-[10%] w-[500px] h-[500px] bg-indigo-500/20 rounded-full blur-[120px] pointer-events-none"></div>
                <div class="w-full h-full relative flex flex-col items-center justify-center p-0 lg:p-12">
-                 <div class="w-full lg:max-w-4xl relative lg:rounded-[1.5rem] overflow-hidden lg:shadow-[0_0_80px_rgba(0,0,0,0.4)] lg:ring-1 lg:ring-white/10 group">
-                   <video :src="item?.video || item?.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover"></video>
+                 <div class="w-full lg:max-w-4xl relative lg:rounded-[1.5rem] overflow-hidden lg:shadow-[0_0_80px_rgba(0,0,0,0.4)] lg:ring-1 lg:ring-white/10 group aspect-video bg-zinc-900/50 flex-shrink-0">
+                   <template v-if="activeMedia">
+                       <model-viewer 
+                         v-if="activeMedia.type === '3d'" 
+                         :src="activeMedia.url" 
+                         camera-controls 
+                         auto-rotate 
+                         class="w-full h-full outline-none bg-black cursor-grab active:cursor-grabbing"
+                       ></model-viewer>
+                       <video 
+                         v-else-if="activeMedia.type === 'video'" 
+                         :src="activeMedia.url" 
+                         autoplay loop muted playsinline 
+                         class="w-full h-full object-cover"
+                       ></video>
+                       <img 
+                         v-else-if="activeMedia.type === 'image'" 
+                         :src="activeMedia.url" 
+                         class="w-full h-full object-cover"
+                       />
+                   </template>
+                 </div>
+
+                 <!-- Thumbnails -->
+                 <div v-if="mediaItems.length > 1" class="flex gap-3 mt-6 overflow-x-auto pb-4 px-4 max-w-full justify-center relative z-20 custom-scrollbar">
+                    <button 
+                        v-for="(media, idx) in mediaItems" :key="idx" 
+                        @click="activeMediaIndex = idx"
+                        :class="activeMediaIndex === idx ? 'ring-2 ring-white ring-offset-2 ring-offset-[#0a0a0a] opacity-100 scale-105' : 'opacity-50 hover:opacity-100'"
+                        class="w-16 h-12 rounded-lg overflow-hidden shrink-0 border border-white/10 transition-all bg-zinc-900 focus:outline-none"
+                    >
+                        <div v-if="media.type === '3d'" class="w-full h-full flex items-center justify-center text-xs text-white bg-indigo-500/20 font-bold">3D</div>
+                        <div v-else-if="media.type === 'video'" class="w-full h-full flex items-center justify-center text-white bg-zinc-800"><Icon name="lucide:play" class="w-4 h-4"/></div>
+                        <img v-else :src="media.url" class="w-full h-full object-cover" />
+                    </button>
                  </div>
                </div>
             </div>
@@ -119,12 +206,13 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                  <div class="flex gap-4 sm:gap-6">
                     <button @click="activeTab = 'overview'" :class="activeTab === 'overview' ? 'text-black border-black' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-4 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Overview</button>
                     <button @click="activeTab = 'code'" :class="activeTab === 'code' ? 'text-black border-black' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-4 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Source Code</button>
+                    <button @click="activeTab = 'reviews'" :class="activeTab === 'reviews' ? 'text-black border-black' : 'text-zinc-400 border-transparent hover:text-zinc-700'" class="pb-4 font-bold tracking-wide uppercase text-xs border-b-2 transition-colors whitespace-nowrap">Reviews ({{ dbReviews?.length || 0 }})</button>
                  </div>
 
                  <div class="flex items-center gap-1 sm:gap-3 pb-4">
-                   <a v-if="item?.demoUrl" :href="item.demoUrl" target="_blank" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors bg-indigo-50 hover:bg-indigo-100 px-2.5 sm:px-3 py-1.5 rounded-lg active:scale-95">
+                   <NuxtLink v-if="item?.demoUrl" :to="'/preview/' + item.id" target="_blank" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors bg-indigo-50 hover:bg-indigo-100 px-2.5 sm:px-3 py-1.5 rounded-lg active:scale-95">
                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg> <span class="hidden sm:block">Live Demo</span>
-                   </a>
+                   </NuxtLink>
 
                    <button @click="shareLink" class="text-xs font-bold text-zinc-500 hover:text-black flex items-center gap-1.5 transition-colors bg-zinc-100 hover:bg-zinc-200 px-2.5 sm:px-3 py-1.5 rounded-lg active:scale-95">
                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> <span class="hidden sm:block">Share</span>
@@ -213,6 +301,51 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                              {{ currentCode }}
                           </div>
                         </div>
+                      </div>
+                   </div>
+
+                   <div v-if="activeTab === 'reviews'" class="animate-in fade-in flex flex-col gap-6">
+                      <div v-if="hasPurchased || user?.plan === 'PRO' || user?.role === 'ADMIN'" class="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm relative">
+                         <h4 class="font-bold text-sm mb-3">Leave a Review</h4>
+                         <form @submit.prevent="submitReview" class="flex flex-col gap-3">
+                           <div class="flex items-center gap-2">
+                             <template v-for="star in 5" :key="star">
+                               <button type="button" @click="reviewForm.rating = star" class="text-2xl focus:outline-none transition-all hover:scale-110">
+                                 <Icon name="lucide:star" :class="star <= reviewForm.rating ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-300'" class="w-6 h-6" />
+                               </button>
+                             </template>
+                           </div>
+                           <textarea v-model="reviewForm.comment" rows="3" placeholder="What do you think about this product?" class="w-full bg-zinc-50 border border-zinc-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-black transition-colors resize-none"></textarea>
+                           <button type="submit" :disabled="isSubmittingReview" class="self-end bg-black text-white px-6 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-zinc-800 transition-colors disabled:opacity-70 disabled:cursor-not-allowed">
+                             {{ isSubmittingReview ? 'Submitting...' : 'Submit Review' }}
+                           </button>
+                         </form>
+                      </div>
+
+                      <div v-if="dbReviews?.length === 0" class="text-center py-10 bg-zinc-50 rounded-2xl border border-zinc-200 border-dashed">
+                         <Icon name="lucide:message-square" class="w-10 h-10 mx-auto text-zinc-300 mb-3" />
+                         <p class="text-zinc-500 font-medium text-sm">No reviews yet. Be the first to review this product!</p>
+                      </div>
+
+                      <div v-else class="flex flex-col gap-4">
+                         <div v-for="review in dbReviews" :key="review.id" class="bg-white p-5 rounded-2xl border border-zinc-200 shadow-sm flex flex-col gap-3">
+                            <div class="flex items-center justify-between">
+                               <div class="flex items-center gap-3">
+                                 <div class="w-10 h-10 bg-zinc-200 rounded-full flex items-center justify-center font-bold text-zinc-500 overflow-hidden shrink-0">
+                                    <img v-if="review.user?.avatar" :src="review.user.avatar" class="w-full h-full object-cover" />
+                                    <span v-else>{{ review.user?.name ? review.user.name[0].toUpperCase() : 'U' }}</span>
+                                 </div>
+                                 <div class="flex flex-col">
+                                   <span class="text-sm font-bold text-black">{{ review.user?.name || 'Anonymous User' }}</span>
+                                   <span class="text-[10px] text-zinc-400 font-medium">{{ new Date(review.createdAt).toLocaleDateString() }}</span>
+                                 </div>
+                               </div>
+                               <div class="flex items-center gap-0.5">
+                                 <Icon v-for="s in 5" :key="s" name="lucide:star" :class="s <= review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-200'" class="w-4 h-4" />
+                               </div>
+                            </div>
+                            <p class="text-sm text-zinc-600 leading-relaxed">{{ review.comment }}</p>
+                         </div>
                       </div>
                    </div>
                </div>

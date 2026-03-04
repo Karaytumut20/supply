@@ -18,6 +18,15 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
+if (item.value) {
+  defineOgImageComponent('Project', {
+    title: item.value.title,
+    description: item.value.description,
+    category: Array.isArray(item.value.categories) ? item.value.categories[0] : item.value.categories,
+    price: item.value.price
+  })
+}
+
 // Akıllı Geri Dönüş Fonksiyonu
 const goBack = () => {
   // Eğer kullanıcı Dashboard'dan geldiyse veya site içi gezindiyse geriye at
