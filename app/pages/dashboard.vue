@@ -234,6 +234,9 @@ const tabs = computed(() => {
                       <Icon name="lucide:code" class="w-3.5 h-3.5" />
                       Kaynak Kodu
                     </div>
+                    <a v-if="purchase.project?.fileUrl" :href="'/api/user/download?projectId=' + (purchase.project?.id || purchase.projectId)" class="px-3 py-2.5 rounded-xl border border-zinc-200 hover:bg-indigo-50 text-indigo-600 hover:text-indigo-800 transition-colors" title="Dosyayı İndir">
+                      <Icon name="lucide:folder-down" class="w-3.5 h-3.5" />
+                    </a>
                     <button @click.prevent="generateMockInvoice" class="px-3 py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-500 hover:text-black transition-colors" title="Faturayı İndir">
                       <Icon name="lucide:download" class="w-3.5 h-3.5" />
                     </button>
@@ -260,9 +263,14 @@ const tabs = computed(() => {
                     <div class="flex-1 sm:flex-none bg-black hover:bg-zinc-800 text-white text-xs font-bold py-2.5 px-5 rounded-xl transition-colors text-center flex items-center justify-center gap-1.5">
                       <Icon name="lucide:code" class="w-3.5 h-3.5" /> Kaynağı Aç
                     </div>
-                    <button @click.prevent="generateMockInvoice" class="px-4 py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-500 hover:text-black transition-colors flex items-center justify-center gap-2 text-xs font-bold w-full">
-                       Fatura <Icon name="lucide:download" class="w-3.5 h-3.5" />
-                    </button>
+                    <div class="flex gap-2 w-full">
+                       <a v-if="purchase.project?.fileUrl" :href="'/api/user/download?projectId=' + (purchase.project?.id || purchase.projectId)" class="flex-1 px-3 py-2.5 rounded-xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 transition-colors flex items-center justify-center gap-1.5 text-xs font-bold" title="Dosyayı İndir">
+                         Dosya <Icon name="lucide:folder-down" class="w-3.5 h-3.5" />
+                       </a>
+                       <button @click.prevent="generateMockInvoice" class="flex-1 px-3 py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-500 hover:text-black transition-colors flex items-center justify-center gap-1.5 text-xs font-bold" title="Faturayı İndir">
+                          Fatura <Icon name="lucide:download" class="w-3.5 h-3.5" />
+                       </button>
+                    </div>
                  </div>
               </NuxtLink>
             </div>

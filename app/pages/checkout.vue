@@ -11,9 +11,12 @@ const isProcessing = ref(false)
 const handlePayment = async () => {
     isProcessing.value = true
     try {
-        await checkout()
-        addToast('Ödeme başarılı! Hesap özetinize yönlendiriliyorsunuz.', 'success')
-        router.push('/dashboard?tab=purchases')
+        const res = await checkout()
+        if (typeof window !== 'undefined' && res && res.url) {
+            window.location.href = res.url
+        } else {
+             addToast('Yönlendirme başlatılamadı.', 'error')
+        }
     } catch(e) {
         addToast('Ödeme sırasında bir hata oluştu.', 'error')
     } finally {

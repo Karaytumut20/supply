@@ -56,10 +56,9 @@ export const useCart = () => {
 
     const checkout = async () => {
         try {
-            await $fetch('/api/cart/checkout', { method: 'POST' })
-            cartData.value = null // Yerel belleği temizle, API arkada boşalttı
-            await fetchCart()
-            return true
+            const res: any = await $fetch('/api/cart/checkout', { method: 'POST' })
+            // Sepet temizleme işlemi artık Stripe Webhook tarafından yapılacak
+            return res
         } catch (e: any) {
             throw e
         }

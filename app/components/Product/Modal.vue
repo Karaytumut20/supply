@@ -218,10 +218,13 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                </div>
 
                <div class="p-6 bg-white border-t border-zinc-200 shadow-[0_-15px_40px_rgba(0,0,0,0.06)] relative z-30 shrink-0">
-                 <div v-if="hasPurchased">
+                 <div v-if="hasPurchased" class="flex flex-col gap-3">
+                   <a v-if="item?.fileUrl" :href="'/api/user/download?projectId=' + item.id" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-[56px] rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 text-[15px] transition-all active:scale-95">
+                     <Icon name="lucide:folder-down" class="w-5 h-5" /> Dosyayı İndir
+                   </a>
                    <NuxtLink to="/dashboard?tab=purchases" @click="close" class="w-full bg-zinc-100 hover:bg-zinc-200 text-black h-[56px] rounded-xl font-bold shadow-sm border border-zinc-200 flex justify-center items-center gap-2 text-[15px] transition-all active:scale-95">
                      <Icon name="lucide:check-circle" class="w-5 h-5 text-emerald-500" />
-                     Bu ürüne zaten sahipsiniz (İndirilenlere Git)
+                     Kontrol Paneline Git
                    </NuxtLink>
                  </div>
                  <div v-else-if="hasAccess && !hasPurchased">

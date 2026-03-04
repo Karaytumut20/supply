@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
-import { signToken } from '../../utils/jwt'
+import { signToken, signRefreshToken } from '../../utils/jwt'
 
 const prisma = new PrismaClient()
 
@@ -17,14 +17,18 @@ export default defineEventHandler(async (event) => {
   const isValid = await bcrypt.compare(password, user.password)
   if (!isValid) throw createError({ statusCode: 401, statusMessage: 'Hatali sifre' })
 
-  const token = signToken({
+  const payload = {
     userId: user.id,
     role: user.role,
     plan: user.plan,
     isPro: user.isPro
-  })
+  }
 
-  setCookie(event, 'auth_token', token, { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 7 })
+  const accessToken = signToken(payload)
+  const refreshToken = signRefreshToken(payload)
+
+  setCookie(event, 'auth_token', accessToken, { path: '/', maxAge: 15 * 60 }) // 15 mins accessible by client
+  setCookie(event, 'refresh_token', refreshToken, { httpOnly: true, path: '/', maxAge: 60 * 60 * 24 * 7 }) // 7 days HttpOnly
 
   return { success: true, user: { id: user.id, name: user.name, email: user.email, role: user.role, plan: user.plan, isPro: user.isPro } }
 })

@@ -21,8 +21,8 @@ export default defineEventHandler(async (event) => {
         const ext = path.extname(fileData.filename)
         const uniqueFilename = `${uuidv4()}${ext}`
 
-        // Save locally to public directory so it can be downloaded directly
-        const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'projects')
+        // Save locally to a protected directory outside of public
+        const uploadDir = path.join(process.cwd(), 'server', 'storage', 'projects')
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir, { recursive: true })
         }
@@ -30,10 +30,10 @@ export default defineEventHandler(async (event) => {
         const filePath = path.join(uploadDir, uniqueFilename)
         fs.writeFileSync(filePath, fileData.data)
 
-        // Return the relative URL which can be accessed openly if needed or stored in DB
+        // Return a secure identifier, NOT a public URL
         return {
             success: true,
-            url: `/uploads/projects/${uniqueFilename}`
+            url: uniqueFilename // Stored in DB as fileUrl
         }
 
     } catch (error) {
