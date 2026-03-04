@@ -7,7 +7,8 @@ export default defineNuxtConfig({
   },
   modules: [
     '@nuxtjs/seo',
-    '@pinia/nuxt'
+    '@pinia/nuxt',
+    '@nuxt/icon'
   ],
   site: {
     url: 'http://localhost:3000',

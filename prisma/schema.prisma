@@ -28,6 +28,7 @@ model User {
   reviews          Review[]
   savedProjects    SavedProject[]
   tickets          Ticket[]
+  cart             Cart?
 }
 
 model Project {
@@ -60,6 +61,7 @@ model Project {
   purchasedBy     Purchase[]
   reviews         Review[]
   savedBy         SavedProject[]
+  cartItems       CartItem[]
 
   @@index([status])
   @@index([isPremium])
@@ -79,6 +81,31 @@ model Review {
   @@unique([userId, projectId])
   @@index([projectId])
 }
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model CartItem {
+  id          String   @id @default(uuid())
+  cartId      String
+  cart        Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  licenseType String   @default("STANDARD")
+  price       Float    @default(0)
+  createdAt   DateTime @default(now())
+
+  @@unique([cartId, projectId])
+  @@index([cartId])
+  @@index([projectId])
+}
+
 
 model Purchase {
   id          String   @id @default(uuid())

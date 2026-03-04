@@ -25,7 +25,15 @@ export default defineEventHandler(async (event) => {
 
   return {
     savedProjects: savedProjects.map(sp => sp.project),
-    purchases: purchases.map(p => ({ ...p.project, purchaseDate: p.createdAt })),
+    purchasedProjects: purchases.map(p => ({
+      id: p.id,
+      userId: p.userId,
+      projectId: p.projectId,
+      createdAt: p.createdAt,
+      pricePaid: p.pricePaid,
+      licenseType: p.licenseType,
+      project: p.project
+    })),
     tickets
   }
 })

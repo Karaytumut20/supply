@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { computed } from 'vue'
 
 const route = useRoute()
+const router = useRouter()
 const projectId = route.params.id
 
 // Ürün detaylarını çek
@@ -17,7 +18,16 @@ useSeoMeta({
   twitterCard: 'summary_large_image',
 })
 
-// Modal'ı açık bir şekilde çağırıyoruz (Tam ekran hissi vermek için)
+// Akıllı Geri Dönüş Fonksiyonu
+const goBack = () => {
+  // Eğer kullanıcı Dashboard'dan geldiyse veya site içi gezindiyse geriye at
+  // Eğer linke direkt tıklayıp geldiyse (history yoksa) anasayfaya at
+  if (typeof window !== 'undefined' && window.history.length > 2) {
+    router.back()
+  } else {
+    router.push('/')
+  }
+}
 </script>
 
 <template>
@@ -33,12 +43,12 @@ useSeoMeta({
     </div>
 
     <div v-else class="max-w-[1400px] mx-auto relative">
-       <NuxtLink to="/" class="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black transition-colors mb-6">
-         <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 18-6-6 6-6"/></svg> Back to Library
-       </NuxtLink>
+       <button @click="goBack" class="inline-flex items-center gap-2 text-sm font-medium text-zinc-500 hover:text-black transition-colors mb-6 cursor-pointer">
+         <Icon name="lucide:arrow-left" class="w-4 h-4" /> Geri Dön
+       </button>
 
        <div class="bg-white rounded-[2rem] shadow-xl overflow-hidden border border-zinc-200">
-         <ProductModal :isOpen="true" :item="item" @close="$router.push('/')" />
+         <ProductModal :isOpen="true" :item="item" @close="goBack" />
        </div>
     </div>
   </div>

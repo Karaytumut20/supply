@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { useToast } from '#imports'
+import { useToast, useCart, useCookie, useRequestHeaders } from '#imports'
 
 const props = defineProps<{ isOpen: boolean, item: any }>()
 const emit = defineEmits(['close'])
@@ -17,7 +17,10 @@ const close = () => {
     emit('close')
 }
 
-const { data: user, refresh: refreshUser } = await useFetch('/api/auth/me')
+const { data: user, refresh: refreshUser } = await useFetch('/api/auth/me', { 
+  key: 'auth-user', 
+  headers: useRequestHeaders(['cookie']) as HeadersInit 
+})
 
 const hasPurchased = computed(() => user.value?.purchases?.some((p: any) => p.projectId === props.item?.id || p.id === props.item?.id))
 const isFree = computed(() => !props.item?.price || props.item?.price <= 0)
@@ -29,17 +32,29 @@ const finalPrice = computed(() => {
 })
 
 const isProcessing = ref(false)
+const { addToCart } = useCart()
 
-const buyItem = async () => {
-  if(!user.value) { addToast('Lütfen giriş yapın.', 'error'); window.location.href = '/sign-in'; return; }
+const handleAddToCart = async () => {
   isProcessing.value = true;
   try {
-    const res = await $fetch('/api/projects/purchase', { method: 'POST', body: { projectId: props.item.id, licenseType: selectedLicense.value } })
-    await refreshUser();
-    addToast('Ödeme başarılı! Kaynak kodlara erişebilirsiniz.', 'success')
-    activeTab.value = 'code'
-  } catch(e: any) { addToast(e.data?.statusMessage || 'Satın alma hatası', 'error') }
-  finally { isProcessing.value = false }
+    // 1. Double check session dynamically (Bypasses reactive bugs)
+    const sessionCheck = await $fetch('/api/auth/me')
+    if(!sessionCheck) { 
+      useCookie('auth_token').value = null
+      addToast('Oturum süreniz dolmuş, lütfen tekrar giriş yapın.', 'error')
+      window.location.href = '/sign-in'
+      return
+    }
+
+    // 2. Add item to global cart
+    await addToCart(props.item.id, selectedLicense.value)
+    addToast('Ürün sepete eklendi!', 'success')
+    close() // Modal kapanınca Drawer zaten UseCart içinden otomatik açılacak
+  } catch(e: any) { 
+    addToast(e.message || 'Sepete ekleme hatası', 'error') 
+  } finally { 
+    isProcessing.value = false 
+  }
 }
 
 const currentCode = computed(() => {
@@ -203,15 +218,22 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                </div>
 
                <div class="p-6 bg-white border-t border-zinc-200 shadow-[0_-15px_40px_rgba(0,0,0,0.06)] relative z-30 shrink-0">
-                 <div v-if="hasAccess">
+                 <div v-if="hasPurchased">
+                   <NuxtLink to="/dashboard?tab=purchases" @click="close" class="w-full bg-zinc-100 hover:bg-zinc-200 text-black h-[56px] rounded-xl font-bold shadow-sm border border-zinc-200 flex justify-center items-center gap-2 text-[15px] transition-all active:scale-95">
+                     <Icon name="lucide:check-circle" class="w-5 h-5 text-emerald-500" />
+                     Bu ürüne zaten sahipsiniz (İndirilenlere Git)
+                   </NuxtLink>
+                 </div>
+                 <div v-else-if="hasAccess && !hasPurchased">
                    <button @click="activeTab='code'" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-[56px] rounded-xl font-bold shadow-xl flex justify-center items-center gap-2 text-[15px] transition-transform active:scale-95 focus:ring-4 focus:ring-emerald-200">
-                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> View Source Code
+                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Kaynak Kodu Görüntüle
                    </button>
                  </div>
                  <div v-else>
-                   <button @click="buyItem" :disabled="isProcessing" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-[56px] rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 text-[15px] transition-transform active:scale-95 focus:ring-4 focus:ring-indigo-200">
-                     <span v-if="isProcessing">Simulating Checkout...</span>
-                     <span v-else>Secure Checkout • ${{ finalPrice }}</span>
+                   <button @click="handleAddToCart" :disabled="isProcessing" class="w-full bg-black hover:bg-zinc-800 text-white h-[56px] rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 text-[15px] transition-transform active:scale-95 focus:ring-4 focus:ring-zinc-200">
+                     <Icon name="lucide:shopping-cart" class="w-5 h-5 text-white/90" />
+                     <span v-if="isProcessing">Sepete Ekleniyor...</span>
+                     <span v-else>Sepete Ekle • ${{ finalPrice }}</span>
                    </button>
                  </div>
                </div>

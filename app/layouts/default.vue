@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { useToast } from '#imports'
+import { useToast, useCart, useRequestHeaders } from '#imports'
 
 const isAboutOpen = ref(false)
 const isUserMenuOpen = ref(false)
 const isNotifMenuOpen = ref(false)
 
-const { data: user } = await useFetch('/api/auth/me')
+const { data: user } = await useFetch('/api/auth/me', { headers: useRequestHeaders(['cookie']) as HeadersInit })
 const { data: notifData, refresh: refreshNotifs } = await useFetch(user.value ? '/api/notifications' : '')
 const { addToast } = useToast()
+
+const { isCartOpen, cartData, fetchCart, toggleCart: _toggleCart } = useCart()
+
+onMounted(() => {
+  if (user.value) {
+    fetchCart()
+  }
+})
 
 const handleLogout = async () => {
   await $fetch('/api/auth/logout', { method: 'POST' })
@@ -67,12 +75,16 @@ const toggleUserMenu = () => {
              </span>
           </NuxtLink>
 
+          <!-- Shopping Cart Icon -->
+          <button @click="_toggleCart" class="relative w-10 h-10 rounded-full bg-white border border-zinc-200 hover:bg-zinc-50 flex items-center justify-center text-zinc-600 transition-all shadow-sm focus:outline-none group active:scale-95">
+             <Icon name="lucide:shopping-cart" class="w-[18px] h-[18px] transition-transform group-hover:scale-110" />
+             <span v-if="cartData?.items && cartData.items.length > 0" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-black text-white rounded-full border-2 border-white shadow-sm text-[9px] font-black flex items-center justify-center">{{ cartData.items.length > 9 ? '9+' : cartData.items.length }}</span>
+          </button>
+
+          <!-- Notification Bell -->
           <div class="relative flex items-center justify-center">
             <button @click="toggleNotifs" class="relative w-10 h-10 rounded-full bg-white border border-zinc-200 hover:bg-zinc-50 flex items-center justify-center text-zinc-600 transition-all shadow-sm focus:outline-none group active:scale-95">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="transition-transform group-hover:scale-110">
-                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                 <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-              </svg>
+              <Icon name="lucide:bell" class="w-[18px] h-[18px] transition-transform group-hover:scale-110" />
               <span v-if="notifData?.unreadCount > 0" class="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white rounded-full border-2 border-white shadow-sm text-[9px] font-black flex items-center justify-center">{{ notifData.unreadCount > 9 ? '9+' : notifData.unreadCount }}</span>
             </button>
 
@@ -126,7 +138,7 @@ const toggleUserMenu = () => {
                   </NuxtLink>
                   <NuxtLink to="/dashboard?tab=purchases" @click="isUserMenuOpen = false" class="px-3 py-2.5 text-sm text-zinc-700 hover:text-black hover:bg-zinc-100/80 rounded-xl transition-colors flex items-center gap-2.5 font-medium">
                     <svg class="w-4 h-4 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
-                    My Downloads
+                    Sahip Olduklarım
                   </NuxtLink>
                 </div>
                 <div class="p-2 border-t border-zinc-100">
@@ -148,6 +160,7 @@ const toggleUserMenu = () => {
 
     <div v-if="isUserMenuOpen || isNotifMenuOpen" @click="isUserMenuOpen=false; isNotifMenuOpen=false" class="fixed inset-0 z-40"></div>
 
+    <CartDrawer />
     <main class="flex-grow pt-[72px] relative z-10"><slot /></main>
     <LazyUiAboutModal :isOpen="isAboutOpen" @close="isAboutOpen = false" />
     <UiToast />

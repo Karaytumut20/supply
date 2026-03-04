@@ -5,7 +5,7 @@ import { useToast } from '#imports'
 const props = defineProps<{ item: any }>()
 const emit = defineEmits(['open'])
 const { addToast } = useToast()
-const { data: user } = await useFetch('/api/auth/me')
+const { data: user } = await useFetch('/api/auth/me', { headers: useRequestHeaders(['cookie']) as HeadersInit })
 
 const isFree = computed(() => !props.item.price || props.item.price <= 0)
 
@@ -27,6 +27,11 @@ const isNew = computed(() => {
   if (!props.item.createdAt) return false
   const age = Date.now() - new Date(props.item.createdAt).getTime()
   return age < 7 * 24 * 60 * 60 * 1000 // 7 days
+})
+
+const hasPurchased = computed(() => {
+  if (!user.value?.purchases || !props.item?.id) return false;
+  return user.value.purchases.some((p: any) => p.projectId === props.item.id || p.id === props.item.id);
 })
 
 const techColor = (tech: string) => {
@@ -56,12 +61,16 @@ const quickSave = async (e: Event) => {
   <div class="group flex flex-col cursor-pointer" @click="emit('open', item)">
     <div class="relative w-full aspect-[4/4.2] bg-[#f4f4f5] rounded-[32px] flex items-center justify-center p-6 sm:p-8 overflow-hidden transition-colors duration-300 group-hover:bg-[#ebebec]">
       <!-- NEW badge -->
-      <div v-if="isNew" class="absolute top-5 left-5 z-30">
+      <div v-if="isNew && !hasPurchased" class="absolute top-5 left-5 z-30">
         <span class="bg-emerald-500 text-white px-2.5 py-1 rounded-full text-[10px] font-black tracking-widest shadow-md">NEW</span>
       </div>
-      <button v-else @click="quickSave" class="absolute top-5 left-5 z-30 w-9 h-9 bg-white/90 backdrop-blur-md hover:bg-white text-zinc-400 hover:text-red-500 rounded-full shadow-sm border border-zinc-200/50 flex items-center justify-center transition-all active:scale-90" :disabled="isSaving">
+      <button v-else-if="!hasPurchased" @click="quickSave" class="absolute top-5 left-5 z-30 w-9 h-9 bg-white/90 backdrop-blur-md hover:bg-white text-zinc-400 hover:text-red-500 rounded-full shadow-sm border border-zinc-200/50 flex items-center justify-center transition-all active:scale-90" :disabled="isSaving">
         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clip-rule="evenodd"></path></svg>
       </button>
+
+      <div v-if="hasPurchased" class="absolute top-5 left-5 z-30">
+        <span class="bg-indigo-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest shadow-md flex items-center gap-1.5"><Icon name="lucide:check-circle" class="w-3.5 h-3.5"/> SAHİP</span>
+      </div>
 
       <div class="absolute top-5 right-5 z-20">
         <span v-if="!isFree" class="bg-black/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-black/10">${{ item.price }}</span>

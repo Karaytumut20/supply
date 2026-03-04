@@ -6,7 +6,8 @@ import { useToast } from '#imports'
 useSeoMeta({ title: 'My Dashboard - Supply' })
 const { addToast } = useToast()
 
-const { data: user, pending: userPending, refresh: refreshUser } = await useFetch('/api/auth/me')
+const headers = useRequestHeaders(['cookie']) as HeadersInit
+const { data: user, pending: userPending, refresh: refreshUser } = await useFetch('/api/auth/me', { headers })
 
 if (!userPending.value && !user.value) {
   if (typeof window !== 'undefined') window.location.href = '/sign-in'
@@ -19,6 +20,7 @@ const { data: creatorStats } = useLazyFetch(user.value ? '/api/creator/stats' : 
 const route = useRoute()
 const router = useRouter()
 const activeTab = ref(route.query.tab ? String(route.query.tab) : 'overview')
+const downloadsViewMode = ref('grid')
 
 watch(() => route.query.tab, (newTab) => { if (newTab) activeTab.value = String(newTab) })
 
@@ -47,6 +49,22 @@ const saveSettings = async () => {
   }
 }
 
+const isCanceling = ref(false)
+const cancelSubscription = async () => {
+  if (!confirm('Are you sure you want to cancel your PRO subscription? You will lose access to premium features immediately. This cannot be undone.')) return
+  
+  isCanceling.value = true
+  try {
+    const res: any = await $fetch('/api/user/cancel-plan', { method: 'POST' })
+    await refreshUser()
+    addToast(res.message || 'Subscription cancelled.', 'success')
+  } catch (e: any) {
+    addToast(e.data?.statusMessage || 'Failed to cancel subscription.', 'error')
+  } finally {
+    isCanceling.value = false
+  }
+}
+
 const formatDate = (dateString: string) =>
   new Date(dateString).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 
@@ -57,15 +75,15 @@ const generateMockInvoice = () => {
 
 const tabs = computed(() => {
   const baseTabs = [
-    { id: 'overview', label: 'Overview', icon: '<path d="M3 3h7v7H3z" /><path d="M14 3h7v7h-7z" /><path d="M14 14h7v7h-7z" /><path d="M3 14h7v7H3z" />' },
-    { id: 'purchases', label: 'My Downloads', icon: '<path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>' },
-    { id: 'saved', label: 'Saved Items', icon: '<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>' },
-    { id: 'billing', label: 'Billing', icon: '<rect x="2" y="4" width="20" height="16" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/>' },
-    { id: 'creator', label: 'Creator Hub', icon: '<path d="M12 20v-6M6 20V10M18 20V4"/>' },
-    { id: 'settings', label: 'Settings', icon: '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>' },
+    { id: 'overview', label: 'Genel Bakış', icon: 'lucide:layout-dashboard' },
+    { id: 'purchases', label: 'Sahip Olduklarım', icon: 'lucide:folder-heart' },
+    { id: 'saved', label: 'Favoriler', icon: 'lucide:bookmark' },
+    { id: 'billing', label: 'Faturalandırma', icon: 'lucide:credit-card' },
+    { id: 'creator', label: 'Satıcı Paneli', icon: 'lucide:store' },
+    { id: 'settings', label: 'Ayarlar', icon: 'lucide:settings' },
   ]
   if (user.value?.role === 'ADMIN') {
-    baseTabs.unshift({ id: 'admin', label: 'Admin Panel', icon: '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>' })
+    baseTabs.unshift({ id: 'admin', label: 'Yönetici Paneli', icon: 'lucide:shield-check' })
   }
   return baseTabs
 })
@@ -98,7 +116,7 @@ const tabs = computed(() => {
           <ul class="space-y-1">
             <li v-for="tab in tabs" :key="tab.id">
               <button @click="setTab(tab.id)" :class="activeTab === tab.id ? 'bg-black text-white shadow-md' : 'text-zinc-500 hover:text-black hover:bg-zinc-100/80'" class="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-[14px] font-medium transition-all duration-200">
-                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" v-html="tab.icon"></svg>
+                <Icon :name="tab.icon" class="w-[18px] h-[18px]" />
                 {{ tab.label }}
               </button>
             </li>
@@ -153,14 +171,14 @@ const tabs = computed(() => {
             <!-- Recent purchases preview -->
             <div v-if="dashboardData?.purchasedProjects?.length" class="bg-white border border-zinc-200/80 rounded-[2rem] shadow-sm overflow-hidden">
               <div class="px-6 py-5 border-b border-zinc-100 flex justify-between items-center">
-                <h2 class="font-bold text-black">Recent Downloads</h2>
-                <button @click="setTab('purchases')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800">View all →</button>
+                <h2 class="font-bold text-black">Son İndirilenler</h2>
+                <button @click="setTab('purchases')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800">Tümünü gör →</button>
               </div>
               <div class="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                <div v-for="proj in dashboardData.purchasedProjects.slice(0, 4)" :key="proj.id" class="group relative rounded-2xl overflow-hidden bg-zinc-100 aspect-video">
-                  <video :src="proj.project?.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover"></video>
+                <div v-for="purchase in dashboardData.purchasedProjects.slice(0, 4)" :key="purchase.id" class="group relative rounded-2xl overflow-hidden bg-zinc-100 aspect-video">
+                  <video :src="purchase.project?.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover"></video>
                   <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-3">
-                    <p class="text-white text-xs font-bold leading-tight truncate">{{ proj.project?.title }}</p>
+                    <p class="text-white text-xs font-bold leading-tight truncate">{{ purchase.project?.title }}</p>
                   </div>
                 </div>
               </div>
@@ -171,25 +189,35 @@ const tabs = computed(() => {
           <div v-else-if="activeTab === 'purchases'" class="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div class="flex items-center justify-between">
               <div>
-                <h2 class="text-2xl font-bold tracking-tight text-black">My Downloads</h2>
-                <p class="text-zinc-400 text-sm mt-0.5">Your purchased assets. Source code available immediately.</p>
+                <h2 class="text-2xl font-bold tracking-tight text-black">Sahip Olduklarım</h2>
+                <p class="text-zinc-400 text-sm mt-0.5">Satın aldığınız tüm varlıklar ve erişilebilir kaynak kodlar burada listelenmektedir.</p>
               </div>
-              <span class="bg-zinc-100 text-zinc-600 text-xs font-black px-3 py-1.5 rounded-full">{{ dashboardData?.purchasedProjects?.length || 0 }} items</span>
+              <div class="flex items-center gap-3">
+                 <div class="bg-zinc-100 p-1 rounded-xl flex items-center shadow-inner">
+                   <button @click="downloadsViewMode = 'grid'" :class="downloadsViewMode === 'grid' ? 'bg-white shadow-sm text-black' : 'text-zinc-400 hover:text-zinc-600'" class="p-2 rounded-lg transition-all" title="Kutu Görünümü">
+                     <Icon name="lucide:layout-grid" class="w-[18px] h-[18px]" />
+                   </button>
+                   <button @click="downloadsViewMode = 'list'" :class="downloadsViewMode === 'list' ? 'bg-white shadow-sm text-black' : 'text-zinc-400 hover:text-zinc-600'" class="p-2 rounded-lg transition-all" title="Liste Görünümü">
+                     <Icon name="lucide:list" class="w-[18px] h-[18px]" />
+                   </button>
+                 </div>
+                 <span class="bg-zinc-100 text-zinc-600 text-xs font-black px-3 py-1.5 rounded-full hidden sm:block">{{ dashboardData?.purchasedProjects?.length || 0 }} items</span>
+              </div>
             </div>
 
             <div v-if="!dashboardData?.purchasedProjects?.length" class="bg-white border-2 border-dashed border-zinc-200 rounded-[2rem] py-20 text-center">
               <div class="w-16 h-16 bg-zinc-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <svg class="w-7 h-7 text-zinc-400" fill="none" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
               </div>
-              <h3 class="text-lg font-bold text-black mb-1">No downloads yet</h3>
-              <p class="text-zinc-400 text-sm mb-6">Browse the library and purchase your first asset.</p>
-              <NuxtLink to="/" class="bg-black text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors">Browse Assets</NuxtLink>
+              <h3 class="text-lg font-bold text-black mb-1">Henüz bir ürüne sahip değilsiniz.</h3>
+              <p class="text-zinc-400 text-sm mb-6">Kütüphaneyi keşfedin ve ilk profesyonel varlığınızı satın alın.</p>
+              <NuxtLink to="/" class="bg-black text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-colors">Varlıkları Keşfet</NuxtLink>
             </div>
 
-            <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              <div v-for="purchase in dashboardData.purchasedProjects" :key="purchase.id" class="bg-white border border-zinc-200/80 rounded-[2rem] shadow-sm overflow-hidden group flex flex-col">
+            <div v-else-if="downloadsViewMode === 'grid'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 animate-in fade-in">
+              <NuxtLink :to="`/item/${purchase.project?.id || purchase.projectId}`" v-for="purchase in dashboardData.purchasedProjects" :key="purchase.id" class="bg-white border border-zinc-200/80 rounded-[2rem] shadow-sm hover:shadow-lg hover:border-zinc-300 overflow-hidden group flex flex-col transition-all cursor-pointer">
                 <div class="relative aspect-video bg-zinc-900 overflow-hidden">
-                  <video :src="purchase.project?.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover"></video>
+                  <video :src="purchase.project?.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"></video>
                   <div class="absolute top-3 left-3">
                     <span :class="purchase.licenseType === 'COMMERCIAL' ? 'bg-indigo-600 text-white' : 'bg-white/90 text-black'" class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-sm">
                       {{ purchase.licenseType }}
@@ -198,20 +226,45 @@ const tabs = computed(() => {
                 </div>
                 <div class="p-5 flex flex-col gap-4 flex-1">
                   <div>
-                    <h3 class="font-bold text-black leading-tight text-base">{{ purchase.project?.title || 'Asset' }}</h3>
+                    <h3 class="font-bold text-black leading-tight text-base group-hover:text-indigo-600 transition-colors">{{ purchase.project?.title || 'Asset' }}</h3>
                     <p class="text-xs text-zinc-400 mt-0.5">Purchased {{ formatDate(purchase.createdAt) }}</p>
                   </div>
                   <div class="mt-auto flex gap-2">
-                    <NuxtLink :to="`/item/${purchase.project?.id || purchase.projectId}`" class="flex-1 bg-black hover:bg-zinc-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-colors text-center flex items-center justify-center gap-1.5">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                      Get Code
-                    </NuxtLink>
-                    <button @click="generateMockInvoice" class="px-3 py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-500 hover:text-black transition-colors" title="Download invoice">
-                      <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    <div class="flex-1 bg-black hover:bg-zinc-800 text-white text-xs font-bold py-2.5 px-4 rounded-xl transition-colors text-center flex items-center justify-center gap-1.5">
+                      <Icon name="lucide:code" class="w-3.5 h-3.5" />
+                      Kaynak Kodu
+                    </div>
+                    <button @click.prevent="generateMockInvoice" class="px-3 py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-500 hover:text-black transition-colors" title="Faturayı İndir">
+                      <Icon name="lucide:download" class="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
-              </div>
+              </NuxtLink>
+            </div>
+
+            <!-- List View -->
+            <div v-else class="flex flex-col gap-3 animate-in fade-in">
+              <NuxtLink :to="`/item/${purchase.project?.id || purchase.projectId}`" v-for="purchase in dashboardData.purchasedProjects" :key="purchase.id" class="bg-white border border-zinc-200/80 rounded-2xl p-4 shadow-sm hover:shadow-md hover:border-zinc-300 group flex flex-col sm:flex-row gap-5 items-start sm:items-center transition-all cursor-pointer">
+                 <div class="w-full sm:w-48 aspect-video bg-zinc-900 rounded-xl overflow-hidden shrink-0 relative">
+                   <video :src="purchase.project?.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"></video>
+                 </div>
+                 <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 mb-1.5">
+                      <h3 class="font-bold text-black text-lg truncate group-hover:text-indigo-600 transition-colors">{{ purchase.project?.title || 'Asset' }}</h3>
+                      <span :class="purchase.licenseType === 'COMMERCIAL' ? 'bg-indigo-50 text-indigo-700 border-indigo-200' : 'bg-zinc-100 text-zinc-600 border-zinc-200'" class="px-2 py-0.5 rounded text-[9px] font-black uppercase tracking-widest border hidden sm:inline-flex">{{ purchase.licenseType }}</span>
+                    </div>
+                    <p class="text-sm text-zinc-500 leading-relaxed line-clamp-2 mb-2">{{ purchase.project?.description || 'Premium front-end component.' }}</p>
+                    <p class="text-[11px] text-zinc-400 font-mono">Purchased on {{ formatDate(purchase.createdAt) }}</p>
+                 </div>
+                 <div class="flex sm:flex-col gap-2 w-full sm:w-auto shrink-0 mt-2 sm:mt-0">
+                    <div class="flex-1 sm:flex-none bg-black hover:bg-zinc-800 text-white text-xs font-bold py-2.5 px-5 rounded-xl transition-colors text-center flex items-center justify-center gap-1.5">
+                      <Icon name="lucide:code" class="w-3.5 h-3.5" /> Kaynağı Aç
+                    </div>
+                    <button @click.prevent="generateMockInvoice" class="px-4 py-2.5 rounded-xl border border-zinc-200 hover:bg-zinc-50 text-zinc-500 hover:text-black transition-colors flex items-center justify-center gap-2 text-xs font-bold w-full">
+                       Fatura <Icon name="lucide:download" class="w-3.5 h-3.5" />
+                    </button>
+                 </div>
+              </NuxtLink>
             </div>
           </div>
 
@@ -395,12 +448,26 @@ const tabs = computed(() => {
               <div class="px-6 py-5 border-b border-red-100 bg-red-50/30">
                 <h3 class="font-bold text-red-700">Danger Zone</h3>
               </div>
-              <div class="p-6 flex items-center justify-between gap-4">
-                <div>
-                  <p class="font-semibold text-sm text-zinc-800">Delete account</p>
-                  <p class="text-xs text-zinc-400 mt-0.5">This will permanently delete your account and all data.</p>
+              <div class="p-6 flex flex-col gap-4">
+                
+                <div v-if="user.plan === 'PRO'" class="flex items-center justify-between gap-4 pb-4 border-b border-zinc-100">
+                  <div>
+                    <p class="font-semibold text-sm text-zinc-800">Cancel PRO Subscription</p>
+                    <p class="text-xs text-zinc-400 mt-0.5">Downgrade to the Free plan. You will lose access to premium features immediately.</p>
+                  </div>
+                  <button @click="cancelSubscription" :disabled="isCanceling" class="px-4 py-2 bg-zinc-100 hover:bg-zinc-200 text-black rounded-xl text-sm font-bold transition-colors shrink-0 disabled:opacity-50">
+                    {{ isCanceling ? 'Canceling...' : 'Cancel Subscription' }}
+                  </button>
                 </div>
-                <button class="px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 rounded-xl text-sm font-bold transition-colors shrink-0">Delete Account</button>
+
+                <div class="flex items-center justify-between gap-4">
+                  <div>
+                    <p class="font-semibold text-sm text-zinc-800">Delete account</p>
+                    <p class="text-xs text-zinc-400 mt-0.5">This will permanently delete your account and all data.</p>
+                  </div>
+                  <button class="px-4 py-2 border border-red-300 text-red-600 hover:bg-red-50 rounded-xl text-sm font-bold transition-colors shrink-0">Delete Account</button>
+                </div>
+
               </div>
             </div>
           </div>

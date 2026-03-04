@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 
-const { data: user } = await useFetch('/api/auth/me')
+const { data: user } = await useFetch('/api/auth/me', { headers: useRequestHeaders(['cookie']) as HeadersInit })
 
 if (!user.value || user.value.role !== 'ADMIN') {
   await navigateTo('/')
