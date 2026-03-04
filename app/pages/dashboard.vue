@@ -7,7 +7,7 @@ useSeoMeta({ title: 'My Dashboard - Supply' })
 const { addToast } = useToast()
 
 const headers = useRequestHeaders(['cookie']) as HeadersInit
-const { data: user, pending: userPending, refresh: refreshUser } = await useFetch('/api/auth/me', { headers })
+const { data: user, pending: userPending, refresh: refreshUser } = await useFetch('/api/auth/me', { key: 'auth-user', headers })
 
 if (!userPending.value && !user.value) {
   if (typeof window !== 'undefined') window.location.href = '/sign-in'

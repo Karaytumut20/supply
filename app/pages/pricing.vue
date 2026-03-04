@@ -4,7 +4,7 @@ import { useToast } from '#imports'
 
 useSeoMeta({ title: 'Pricing - Get Pro Access' })
 
-const { data: user, refresh: refreshUser } = await useFetch('/api/auth/me', { headers: useRequestHeaders(['cookie']) as HeadersInit })
+const { data: user, refresh: refreshUser } = await useFetch('/api/auth/me', { key: 'auth-user', headers: useRequestHeaders(['cookie']) as HeadersInit })
 const { addToast } = useToast()
 const isUpgrading = ref(false)
 const isYearly = ref(true)

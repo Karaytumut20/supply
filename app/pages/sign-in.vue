@@ -67,7 +67,7 @@ const handleSubmit = async () => {
           <div>
             <div class="flex justify-between items-center mb-1.5">
               <label class="block text-sm font-medium text-zinc-700">Password</label>
-              <a v-if="isLoginMode" href="#" class="text-xs text-zinc-500 hover:text-black transition-colors">Forgot password?</a>
+              <NuxtLink v-if="isLoginMode" to="/forgot-password" class="text-xs text-zinc-500 hover:text-black transition-colors">Forgot password?</NuxtLink>
             </div>
             <div class="relative flex items-center">
               <input v-model="password" :type="showPassword ? 'text' : 'password'" required placeholder="••••••••" class="w-full bg-[#f4f4f5] border border-transparent focus:bg-white focus:border-zinc-300 focus:ring-4 focus:ring-zinc-100 rounded-xl pl-4 pr-12 py-3.5 text-black outline-none transition-all duration-200" />

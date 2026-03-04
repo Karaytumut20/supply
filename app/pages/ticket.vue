@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 useSeoMeta({ title: 'Support & FAQ' })
-const { data: user } = await useFetch('/api/auth/me', { headers: useRequestHeaders(['cookie']) as HeadersInit })
+const { data: user } = await useFetch('/api/auth/me', { key: 'auth-user', headers: useRequestHeaders(['cookie']) as HeadersInit })
 const faqs = [
   { q: 'What is Inspo Clone?', a: 'It is a curated library of website inspirations and components.' },
   { q: 'How can I submit a component?', a: 'You can submit your own component via the Submit link in the footer.' },

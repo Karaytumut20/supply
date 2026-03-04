@@ -1,21 +1,19 @@
 import { PrismaClient } from '@prisma/client'
-import jwt from 'jsonwebtoken'
+import { requireAuth } from '../../utils/jwt'
 
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-    const cookies = parseCookies(event)
-    const token = cookies.auth_token
-    if (!token) throw createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-
     try {
-        const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'super-secret-key')
+        const user = await requireAuth(event)
 
         // Kullanıcının sepetini ve içindeki ürünleri getir
         const cart = await prisma.cart.findUnique({
-            where: { userId: decoded.userId },
+            where: { userId: user.userId },
             include: { items: { include: { project: true } } }
         })
+
+        const dbUser = await prisma.user.findUnique({ where: { id: user.userId }, select: { email: true } })
 
         if (!cart || cart.items.length === 0) {
             throw createError({ statusCode: 400, statusMessage: 'Sepetiniz boş' })
@@ -50,8 +48,8 @@ export default defineEventHandler(async (event) => {
             payment_method_types: ['card'],
             mode: 'payment',
             line_items,
-            customer_email: decoded.email,
-            client_reference_id: decoded.userId, // Webhook'ta userId'ye ulaşmak için
+            customer_email: dbUser?.email || undefined,
+            client_reference_id: user.userId, // Webhook'ta userId'ye ulaşmak için
             metadata: {
                 cartId: cart.id
             },

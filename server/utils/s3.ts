@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3'
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 
 export const getS3Client = () => {
@@ -25,12 +25,22 @@ export const uploadToS3 = async (key: string, body: Buffer, contentType: string)
     return client.send(command)
 }
 
-export const generatePresignedUrl = async (key: string, expiresInSeconds: number = 900) => {
+export const generatePresignedUrl = async (key: string, expiresInSeconds: number = 900, downloadName?: string) => {
     const client = getS3Client()
+    const filename = downloadName || key.split('/').pop()
     const command = new GetObjectCommand({
         Bucket: getS3Bucket(),
         Key: key,
-        ResponseContentDisposition: `attachment; filename="${key.split('/').pop()}"`
+        ResponseContentDisposition: `attachment; filename="${filename}"`
     })
     return getSignedUrl(client, command, { expiresIn: expiresInSeconds })
+}
+
+export const deleteS3Object = async (key: string) => {
+    const client = getS3Client()
+    const command = new DeleteObjectCommand({
+        Bucket: getS3Bucket(),
+        Key: key
+    })
+    return client.send(command)
 }

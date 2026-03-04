@@ -5,7 +5,7 @@ import { useToast } from '#imports'
 const props = defineProps<{ item: any }>()
 const emit = defineEmits(['open'])
 const { addToast } = useToast()
-const { data: user } = await useFetch('/api/auth/me', { headers: useRequestHeaders(['cookie']) as HeadersInit })
+const { data: user } = await useFetch('/api/auth/me', { key: 'auth-user', headers: useRequestHeaders(['cookie']) as HeadersInit })
 
 const isFree = computed(() => !props.item.price || props.item.price <= 0)
 

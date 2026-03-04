@@ -57,8 +57,13 @@ export default defineEventHandler(async (event) => {
     }
 
     try {
+        // Create professional friendly filename: "My-Premium-Effect.zip"
+        const cleanTitle = project.title.replace(/[^a-zA-Z0-9]/g, '-')
+        const fileExt = fileKey.split('.').pop() || 'zip'
+        const downloadName = `${cleanTitle}.${fileExt}`
+
         // 15 minutes = 900 seconds
-        const signedUrl = await generatePresignedUrl(fileKey, 900)
+        const signedUrl = await generatePresignedUrl(fileKey, 900, downloadName)
         return sendRedirect(event, signedUrl, 302)
     } catch (err) {
         console.error('Presigned URL error:', err)

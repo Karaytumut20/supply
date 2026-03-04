@@ -2,6 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { useToast, useCart, useCookie, useRequestHeaders, useHead } from '#imports'
 import { marked } from 'marked'
+import { codeToHtml } from 'shiki'
 
 useHead({
   script: [
@@ -67,15 +68,37 @@ const handleAddToCart = async () => {
   }
 }
 
-const currentCode = computed(() => {
+const rawCode = computed(() => {
   if (activeFramework.value === 'react') return props.item?.sourceCodeReact || '// React code not provided.'
   if (activeFramework.value === 'vue') return props.item?.sourceCodeVue || ''
   if (activeFramework.value === 'html') return props.item?.sourceCodeHtml || ''
   return ''
 })
 
+const highlightedCode = ref('')
+
+watch(() => [rawCode.value, activeFramework.value], async ([code, lang]) => {
+  if (!code) {
+    highlightedCode.value = ''
+    return
+  }
+  let shikiLang = 'html'
+  if (lang === 'react') shikiLang = 'tsx'
+  if (lang === 'vue') shikiLang = 'vue'
+
+  try {
+    highlightedCode.value = await codeToHtml(code as string, {
+      lang: shikiLang,
+      theme: 'github-dark-dimmed'
+    })
+  } catch (err) {
+    console.error('Shiki highlighting error:', err)
+    highlightedCode.value = `<pre><code>${code}</code></pre>`
+  }
+}, { immediate: true })
+
 const copyCode = async () => {
-  await navigator.clipboard.writeText(currentCode.value)
+  await navigator.clipboard.writeText(rawCode.value)
   addToast(`${activeFramework.value.toUpperCase()} kodu kopyalandı!`, 'success')
 }
 
@@ -322,8 +345,7 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                               <svg viewBox="0 0 24 24" class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> Copy
                             </button>
                           </div>
-                          <div class="p-6 overflow-y-auto text-[13px] font-mono leading-relaxed text-zinc-300 whitespace-pre-wrap flex-1 custom-scrollbar">
-                             {{ currentCode }}
+                          <div class="p-4 overflow-y-auto text-[13px] font-mono leading-relaxed text-zinc-300 w-full flex-1 custom-scrollbar shiki-container" v-html="highlightedCode">
                           </div>
                         </div>
                       </div>
@@ -406,3 +428,16 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.shiki-container :deep(pre.shiki) {
+  margin: 0;
+  padding: 1rem;
+  background-color: transparent !important;
+  height: 100%;
+}
+.shiki-container :deep(code) {
+  background-color: transparent !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+</style>

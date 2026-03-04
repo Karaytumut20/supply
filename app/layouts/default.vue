@@ -6,7 +6,7 @@ const isAboutOpen = ref(false)
 const isUserMenuOpen = ref(false)
 const isNotifMenuOpen = ref(false)
 
-const { data: user } = await useFetch('/api/auth/me', { headers: useRequestHeaders(['cookie']) as HeadersInit })
+const { data: user } = await useFetch('/api/auth/me', { key: 'auth-user', headers: useRequestHeaders(['cookie']) as HeadersInit })
 const { data: notifData, refresh: refreshNotifs } = await useFetch(user.value ? '/api/notifications' : '')
 const { addToast } = useToast()
 

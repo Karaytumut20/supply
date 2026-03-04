@@ -1,19 +1,14 @@
 import { PrismaClient } from '@prisma/client'
-import jwt from 'jsonwebtoken'
+import { requireAuth } from '../../utils/jwt'
 
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-    const cookies = parseCookies(event)
-    const token = cookies.auth_token
-
-    if (!token) return createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-
     try {
-        const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'super-secret-key')
+        const user = await requireAuth(event)
 
         let cart = await prisma.cart.findUnique({
-            where: { userId: decoded.userId },
+            where: { userId: user.userId },
             include: {
                 items: {
                     include: {
@@ -27,7 +22,7 @@ export default defineEventHandler(async (event) => {
 
         if (!cart) {
             cart = await prisma.cart.create({
-                data: { userId: decoded.userId },
+                data: { userId: user.userId },
                 include: { items: { include: { project: { select: { id: true, title: true, videoUrl: true, price: true, isPremium: true } } } } }
             })
         }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useCart } from '#imports'
 
@@ -15,80 +15,111 @@ const proceedToCheckout = () => {
   isCartOpen.value = false
   router.push('/checkout')
 }
+
+// Kilitleme
+watch(isCartOpen, (val) => {
+    if (typeof document !== 'undefined') {
+        if (val) document.body.style.overflow = 'hidden'
+        else document.body.style.overflow = ''
+    }
+})
 </script>
 
 <template>
   <Teleport to="body">
-    <!-- Backdrop -->
-    <Transition enter-active-class="transition-opacity duration-300" enter-from-class="opacity-0" leave-active-class="transition-opacity duration-300" leave-to-class="opacity-0">
-      <div v-if="isCartOpen" @click="isCartOpen = false" class="fixed inset-0 bg-black/40 backdrop-blur-sm z-[100]"></div>
+    <!-- Ultra Premium Backdrop -->
+    <Transition enter-active-class="transition duration-700 ease-out" enter-from-class="opacity-0 backdrop-blur-none" enter-to-class="opacity-100 backdrop-blur-md" leave-active-class="transition duration-500 ease-in" leave-from-class="opacity-100 backdrop-blur-md" leave-to-class="opacity-0 backdrop-blur-none">
+      <div v-if="isCartOpen" @click="isCartOpen = false" class="fixed inset-0 bg-zinc-900/40 z-[100]"></div>
     </Transition>
 
-    <!-- Drawer Panel -->
-    <Transition enter-active-class="transition duration-300 ease-in-out transform" enter-from-class="translate-x-full" leave-active-class="transition duration-300 ease-in-out transform" leave-to-class="translate-x-full">
-      <div v-if="isCartOpen" class="fixed inset-y-0 right-0 w-full md:w-[450px] bg-white shadow-2xl z-[110] flex flex-col border-l border-zinc-200">
+    <!-- Floating Glassmorphism Drawer -->
+    <Transition enter-active-class="transition duration-500 cubic-bezier(0.16, 1, 0.3, 1) transform" enter-from-class="translate-x-[120%] opacity-0 rotate-2" enter-to-class="translate-x-0 opacity-100 rotate-0" leave-active-class="transition duration-400 cubic-bezier(0.7, 0, 0.84, 0) transform" leave-from-class="translate-x-0 opacity-100" leave-to-class="translate-x-[120%] opacity-0">
+      <div v-if="isCartOpen" class="fixed inset-y-0 sm:inset-y-4 right-0 sm:right-4 w-full sm:w-[440px] bg-white/80 backdrop-blur-[40px] shadow-[0_0_100px_rgba(0,0,0,0.1),inset_0_0_0_1px_rgba(255,255,255,0.5)] z-[110] flex flex-col sm:rounded-[2.5rem] overflow-hidden">
+        
+        <!-- Üst Dekoratif Şerit -->
+        <div class="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+
         <!-- Header -->
-        <div class="px-6 py-5 border-b border-zinc-100 flex justify-between items-center bg-zinc-50/50">
-          <div class="flex items-center gap-2">
-            <Icon name="lucide:shopping-bag" class="w-5 h-5 text-black" />
-            <h2 class="text-xl font-bold tracking-tight text-black">Your Cart</h2>
-            <span v-if="cartData?.items && cartData.items.length > 0" class="bg-black text-white text-[10px] font-black px-2 py-0.5 rounded-full">{{ cartData.items.length }}</span>
+        <div class="px-8 py-6 flex justify-between items-center shrink-0 border-b border-black/5 bg-white/50">
+          <div class="flex items-center gap-3">
+            <h2 class="text-2xl font-black tracking-tight text-black leading-none">Sepetim</h2>
+            <span v-if="cartData?.items?.length > 0" class="bg-black text-white text-[11px] font-black px-2.5 py-1 rounded-full shadow-sm">{{ cartData.items.length }} Ürün</span>
           </div>
-          <button @click="isCartOpen = false" class="p-2 text-zinc-400 hover:text-black hover:bg-zinc-100 rounded-full transition-all active:scale-95">
-            <Icon name="lucide:x" class="w-5 h-5" />
+          <button @click="isCartOpen = false" class="w-10 h-10 bg-black/5 hover:bg-black/10 rounded-full text-black flex items-center justify-center transition-all active:scale-95 group focus:outline-none">
+            <Icon name="lucide:x" class="w-5 h-5 group-hover:rotate-90 transition-transform duration-500" />
           </button>
         </div>
 
         <!-- Body -->
-        <div class="flex-1 overflow-y-auto p-6 custom-scrollbar">
-          <div v-if="isCartLoading" class="flex flex-col items-center justify-center h-full text-zinc-400 gap-3">
-             <div class="w-8 h-8 border-4 border-zinc-200 border-t-black rounded-full animate-spin"></div>
-             <p class="text-sm font-semibold">Sepet yükleniyor...</p>
+        <div class="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar relative">
+          <div v-if="isCartLoading" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-white/40 backdrop-blur-sm gap-4">
+             <div class="w-10 h-10 border-4 border-black/10 border-t-black rounded-full animate-spin"></div>
           </div>
-          <div v-else-if="!cartData?.items || cartData.items.length === 0" class="flex flex-col items-center justify-center h-full text-center">
-            <div class="w-16 h-16 bg-zinc-50 rounded-full flex items-center justify-center mb-4 border border-zinc-100">
-              <Icon name="lucide:shopping-cart" class="w-8 h-8 text-zinc-300" />
+          
+          <div v-if="!cartData?.items || cartData.items.length === 0" class="flex flex-col items-center justify-center h-full text-center">
+            <div class="w-24 h-24 bg-gradient-to-br from-zinc-100 to-zinc-200/50 rounded-full flex items-center justify-center mb-6 shadow-inner ring-1 ring-black/5">
+              <Icon name="lucide:shopping-cart" class="w-10 h-10 text-zinc-400 transform -rotate-12 transition-transform hover:rotate-12 duration-500" />
             </div>
-            <h3 class="text-lg font-bold text-black mb-1">Sepetiniz boş</h3>
-            <p class="text-zinc-500 text-sm mb-6">Görünüşe göre henüz sepetinize bir ürün eklemediniz.</p>
-            <button @click="isCartOpen = false" class="bg-black text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-zinc-800 transition-all active:scale-95 shadow-md">
-              Kütüphaneyi Keşfet
+            <h3 class="text-2xl font-black text-black mb-3 tracking-tight">Ürün Seçilmedi</h3>
+            <p class="text-zinc-500 text-sm mb-8 leading-relaxed max-w-[240px]">Tasarımlarınızı bir sonraki seviyeye taşımak için kütüphanemizi keşfedin.</p>
+            <button @click="isCartOpen = false" class="bg-black text-white px-8 py-4 rounded-2xl font-bold text-[15px] hover:bg-zinc-800 transition-transform active:scale-95 shadow-[0_10px_30px_rgba(0,0,0,0.15)] flex items-center gap-2 group">
+              Keşfetmeye Başla <Icon name="lucide:arrow-right" class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-          <div v-else class="flex flex-col gap-4">
-            <div v-for="item in cartData.items" :key="item.id" class="flex gap-4 p-3 bg-white rounded-2xl border border-zinc-200/80 shadow-sm group hover:border-zinc-300 transition-colors">
-              <div class="w-24 h-20 bg-zinc-900 rounded-xl overflow-hidden shrink-0 relative flex items-center justify-center">
-                 <video v-if="item.project?.videoUrl" :src="item.project.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover opacity-80"></video>
-                 <Icon v-else name="lucide:code" class="w-6 h-6 text-zinc-600" />
+          
+          <div v-else class="flex flex-col gap-5">
+            <div v-for="(item, index) in cartData.items" :key="item.id" class="group flex gap-4 p-4 bg-white/70 hover:bg-white rounded-3xl border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 animate-in slide-in-from-right-4 fade-in" :style="{ animationDelay: `${index * 50}ms` }">
+              <div class="w-[84px] h-[84px] bg-[#0a0a0a] rounded-2xl overflow-hidden shrink-0 relative flex items-center justify-center shadow-inner group-hover:shadow-[0_0_0_4px_rgba(0,0,0,0.05)] transition-all">
+                 <video v-if="item.project?.videoUrl" :src="item.project.videoUrl" autoplay loop muted playsinline class="w-full h-full object-cover opacity-80 group-hover:scale-110 transition-transform duration-700"></video>
+                 <Icon v-else name="lucide:code" class="w-8 h-8 text-zinc-600" />
+                 <div class="absolute inset-0 ring-1 ring-inset ring-white/10 rounded-2xl"></div>
               </div>
-              <div class="flex-1 min-w-0 py-1 flex flex-col justify-between">
+              <div class="flex-1 py-0.5 flex flex-col relative justify-between">
+                <button @click="removeFromCart(item.id)" class="absolute -top-1 -right-1 w-7 h-7 rounded-full bg-red-50 opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-500 hover:text-white flex items-center justify-center shrink-0 transition-all duration-300 transform scale-90 hover:scale-100 z-10" title="Sil">
+                  <Icon name="lucide:x" class="w-3.5 h-3.5" />
+                </button>
                 <div>
-                  <h4 class="font-bold text-sm text-black truncate">{{ item.project?.title }}</h4>
-                  <p class="text-[11px] font-semibold text-zinc-500 uppercase tracking-widest mt-0.5">{{ item.licenseType }} LİSANS</p>
+                  <h4 class="font-bold text-[14px] text-black leading-snug line-clamp-2 pr-6">{{ item.project?.title }}</h4>
+                  <p class="text-[10px] font-black tracking-widest uppercase text-indigo-500 mt-1">{{ item.licenseType }} LİSANS</p>
                 </div>
-                <div class="flex items-center justify-between mt-2">
-                  <span class="font-black text-black">${{ item.price }}</span>
-                  <button @click="removeFromCart(item.id)" class="text-xs font-bold text-zinc-400 hover:text-red-500 flex items-center gap-1 transition-colors">
-                    <Icon name="lucide:trash-2" class="w-3.5 h-3.5" /> Kaldır
-                  </button>
+                <div class="mt-auto pt-2 flex items-end justify-between">
+                  <span class="font-black text-xl text-black leading-none">${{ item.price }}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Footer -->
-        <div v-if="cartData?.items && cartData.items.length > 0" class="p-6 bg-white border-t border-zinc-100 shrink-0 shadow-[0_-10px_40px_rgba(0,0,0,0.03)] z-10">
-          <div class="flex justify-between items-center mb-6">
-            <span class="text-zinc-500 font-medium tracking-wide">Toplam Tutar</span>
-            <span class="text-3xl font-black text-black">${{ cartTotal }}</span>
+        <!-- Premium Footer -->
+        <div v-if="cartData?.items && cartData.items.length > 0" class="p-8 bg-white/80 border-t border-black/5 shrink-0 z-10 relative backdrop-blur-2xl">
+          <div class="absolute inset-0 bg-gradient-to-t from-white/80 to-transparent pointer-events-none -top-10 h-10"></div>
+          <div class="flex justify-between items-end mb-6">
+            <span class="text-zinc-500 font-bold text-sm tracking-wide">Ara Toplam</span>
+            <span class="text-4xl font-black text-black tracking-tighter">${{ cartTotal }}</span>
           </div>
-          <button @click="proceedToCheckout" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-[56px] rounded-xl font-bold shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2 text-[15px] transition-transform active:scale-95">
-            Güvenli Ödemeye Geç
-            <Icon name="lucide:arrow-right" class="w-4 h-4" />
+          <button @click="proceedToCheckout" class="w-full bg-black hover:bg-zinc-800 text-white h-[68px] rounded-[1.5rem] font-bold shadow-[0_15px_40px_rgba(0,0,0,0.2)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.3)] flex items-center justify-between px-8 text-[17px] transition-all active:scale-95 group">
+            <span>Güvenli Ödeme</span>
+            <div class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center transform group-hover:translate-x-1 transition-transform">
+               <Icon name="lucide:arrow-right" class="w-4 h-4 text-white" />
+            </div>
           </button>
         </div>
       </div>
     </Transition>
   </Teleport>
 </template>
+
+<style scoped>
+.animate-in {
+  animation-fill-mode: both;
+}
+@keyframes slide-in-right {
+  0% { transform: translateX(20px); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+.slide-in-from-right-4 {
+  animation-name: slide-in-right;
+  animation-duration: 0.5s;
+  animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
+</style>

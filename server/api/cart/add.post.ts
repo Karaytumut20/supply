@@ -1,16 +1,11 @@
 import { PrismaClient } from '@prisma/client'
-import jwt from 'jsonwebtoken'
+import { requireAuth } from '../../utils/jwt'
 
 const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
-    const cookies = parseCookies(event)
-    const token = cookies.auth_token
-
-    if (!token) return createError({ statusCode: 401, statusMessage: 'Unauthorized' })
-
     try {
-        const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'super-secret-key')
+        const user = await requireAuth(event)
         const body = await readBody(event)
         const { projectId, licenseType } = body
 
@@ -23,15 +18,15 @@ export default defineEventHandler(async (event) => {
 
         // Zaten satın alınmış mı kontrol et (Sahiplik engeli)
         const existingPurchase = await prisma.purchase.findUnique({
-            where: { userId_projectId: { userId: decoded.userId, projectId } }
+            where: { userId_projectId: { userId: user.userId, projectId } }
         })
 
         if (existingPurchase) return createError({ statusCode: 400, statusMessage: 'Zaten bu ürüne sahipsiniz.' })
 
         // Kullanıcının sepetini bul veya oluştur
-        let cart = await prisma.cart.findUnique({ where: { userId: decoded.userId } })
+        let cart = await prisma.cart.findUnique({ where: { userId: user.userId } })
         if (!cart) {
-            cart = await prisma.cart.create({ data: { userId: decoded.userId } })
+            cart = await prisma.cart.create({ data: { userId: user.userId } })
         }
 
         // Sepete ürünü ekle (Zaten varsa üzerine yazar/upsert)
