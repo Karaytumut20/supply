@@ -9,20 +9,24 @@ const { addToast } = useToast()
 const isUpgrading = ref(false)
 const isYearly = ref(true)
 
-const upgradeToPro = async () => {
+const upgradePlan = async (targetPlan: 'PRO' | 'ULTIMATE') => {
   if(!user.value) {
     addToast('Lütfen önce giriş yapın.', 'error')
     window.location.href = '/sign-in'
     return
   }
-  if(user.value.isPro) {
-    addToast('Zaten Pro üyesisiniz!', 'info')
+  if(user.value.plan === targetPlan) {
+    addToast(`Zaten ${targetPlan} üyesisiniz!`, 'info')
     return
+  }
+  if (user.value.plan === 'ULTIMATE') {
+      addToast('Zaten en üst pakettesiniz.', 'info')
+      return;
   }
 
   isUpgrading.value = true
   try {
-    const res = await $fetch('/api/user/upgrade', { method: 'POST' })
+    const res = await $fetch('/api/user/upgrade', { method: 'POST', body: { targetPlan } })
     addToast(res.message, 'success')
     await refreshUser()
     setTimeout(() => window.location.href = '/dashboard', 1500)
@@ -57,7 +61,7 @@ const upgradeToPro = async () => {
         </button>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-5xl mx-auto">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 w-full max-w-6xl mx-auto">
 
         <div class="bg-white/5 border border-white/10 rounded-[2rem] p-10 flex flex-col backdrop-blur-md">
           <h3 class="text-2xl font-bold mb-2">Pay per component</h3>
@@ -90,12 +94,41 @@ const upgradeToPro = async () => {
             <li class="flex items-center gap-3 text-indigo-50"><svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Priority email support</li>
           </ul>
 
-          <button v-if="user?.isPro" disabled class="w-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 py-4 rounded-xl font-bold cursor-not-allowed">Active Plan</button>
-          <button v-else @click="upgradeToPro" :disabled="isUpgrading" class="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] disabled:opacity-70">
+          <button v-if="user?.plan === 'PRO' || user?.plan === 'ULTIMATE'" disabled class="w-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 py-4 rounded-xl font-bold cursor-not-allowed">Active / Enrolled Plan</button>
+          <button v-else @click="upgradePlan('PRO')" :disabled="isUpgrading" class="w-full bg-white text-black py-4 rounded-xl font-bold hover:bg-zinc-200 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)] disabled:opacity-70">
             {{ isUpgrading ? 'Processing...' : 'Upgrade to Pro' }}
           </button>
         </div>
 
+        <div class="bg-white/5 border border-white/10 rounded-[2rem] p-8 lg:p-10 flex flex-col backdrop-blur-md">
+          <h3 class="text-2xl font-bold mb-2">Lifetime Ultimate</h3>
+          <p class="text-zinc-400 text-sm mb-8">For enterprise teams and studios.</p>
+          <div class="flex items-baseline gap-2 mb-8">
+            <span class="text-5xl font-extrabold">$249</span>
+            <span class="text-zinc-500">once</span>
+          </div>
+          <ul class="space-y-4 mb-10 flex-1">
+            <li class="flex items-center gap-3 text-zinc-300"><svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> <strong class="text-white">Lifetime access</strong> to everything</li>
+            <li class="flex items-center gap-3 text-zinc-300"><svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Priority template requests</li>
+            <li class="flex items-center gap-3 text-zinc-300"><svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 1-on-1 private support</li>
+            <li class="flex items-center gap-3 text-zinc-300"><svg class="w-5 h-5 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Multi-seat enterprise license</li>
+          </ul>
+
+          <button v-if="user?.plan === 'ULTIMATE'" disabled class="w-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/50 py-4 rounded-xl font-bold cursor-not-allowed">Active Plan</button>
+          <button v-else @click="upgradePlan('ULTIMATE')" :disabled="isUpgrading" class="w-full bg-white/10 hover:bg-white/20 text-white py-4 rounded-xl font-bold hover:bg-zinc-800 transition-all disabled:opacity-70">
+            {{ isUpgrading ? 'Processing...' : (user?.plan === 'PRO' ? 'Upgrade to Ultimate' : 'Get Lifetime') }}
+          </button>
+        </div>
+
+      </div>
+
+      <!-- No Refunds Disclaimer -->
+      <div class="mt-16 text-center w-full max-w-2xl mx-auto">
+         <div class="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 inline-block backdrop-blur-sm">
+            <p class="text-sm text-rose-200/80 leading-relaxed font-medium">
+              <strong class="text-rose-400">Önemli İade Politikası:</strong> Premium dijital ürünlerin ve kaynak kodların anında erişime açılması nedeniyle, satın alımlardan sonra <strong class="text-white">kesinlikle iade (refund) yapılmamaktadır.</strong> Lütfen satın almadan önce projelerin demosunu inceleyiniz.
+            </p>
+         </div>
       </div>
     </div>
   </div>

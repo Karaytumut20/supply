@@ -48,6 +48,12 @@ const pageTitle = computed(() => {
         <NuxtLink to="/admin/users" @click="isMobileMenuOpen = false" :class="route.path === '/admin/users' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-500 hover:bg-zinc-50 font-medium'" class="px-4 py-3 md:py-2.5 rounded-xl text-sm text-left transition-colors flex items-center gap-3">
           <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Users & Creators
         </NuxtLink>
+        <NuxtLink to="/admin/notifications" @click="isMobileMenuOpen = false" :class="route.path === '/admin/notifications' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-500 hover:bg-zinc-50 font-medium'" class="px-4 py-3 md:py-2.5 rounded-xl text-sm text-left transition-colors flex items-center gap-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notifications
+        </NuxtLink>
+        <NuxtLink to="/admin/requests" @click="isMobileMenuOpen = false" :class="route.path === '/admin/requests' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-500 hover:bg-zinc-50 font-medium'" class="px-4 py-3 md:py-2.5 rounded-xl text-sm text-left transition-colors flex items-center gap-3">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2 10 22"/><path d="m8 6-6 6 6 6"/><path d="m16 18 6-6-6-6"/></svg> Topluluk İstekleri
+        </NuxtLink>
         <NuxtLink to="/admin/tickets" @click="isMobileMenuOpen = false" :class="route.path === '/admin/tickets' ? 'bg-indigo-50 text-indigo-700 font-bold' : 'text-zinc-500 hover:bg-zinc-50 font-medium'" class="px-4 py-3 md:py-2.5 rounded-xl text-sm text-left transition-colors flex items-center gap-3">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Tickets
         </NuxtLink>

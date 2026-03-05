@@ -7,9 +7,41 @@ useSeoMeta({ title: 'Users & Creators - Admin' })
 const { data: dbUsers, refresh: refreshUsers } = await useFetch('/api/admin/users')
 
 const isUserModalOpen = ref(false)
+const isHistoryModalOpen = ref(false)
+const historyUser = ref<any>(null)
+
+const computedHistory = computed(() => {
+  if (!historyUser.value) return []
+  const purchases = historyUser.value.purchases ? [...historyUser.value.purchases] : []
+  
+  if (historyUser.value.plan === 'PRO') {
+    purchases.push({
+      id: 'sub-pro-' + historyUser.value.id,
+      project: { title: 'PRO Plan Subscription' },
+      licenseType: 'MEMBERSHIP',
+      createdAt: historyUser.value.createdAt,
+      pricePaid: 29
+    })
+  } else if (historyUser.value.plan === 'ULTIMATE') {
+    purchases.push({
+      id: 'sub-ult-' + historyUser.value.id,
+      project: { title: 'ULTIMATE Plan Subscription (Lifetime)' },
+      licenseType: 'MEMBERSHIP',
+      createdAt: historyUser.value.createdAt,
+      pricePaid: 199
+    })
+  }
+  return purchases.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+})
+
 const editingUser = ref<any>(null)
 const userForm = ref({ name: '', email: '', password: '', role: 'USER', plan: 'FREE', isBanned: false, planSource: 'UNKNOWN' })
 const isSubmittingUser = ref(false)
+
+const openHistoryModal = (u: any) => {
+  historyUser.value = u
+  isHistoryModalOpen.value = true
+}
 
 const openUserModal = (u: any = null) => {
   if (u) {
@@ -81,6 +113,7 @@ const toggleBanUser = async (u: any) => {
             </td>
             <td class="px-6 py-4 text-right">
               <div class="flex justify-end gap-1.5">
+                <button @click="openHistoryModal(u)" class="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Cari / Satın Alma Geçmişi"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></button>
                 <button @click="openUserModal(u)" class="p-2 text-zinc-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-colors" title="Düzenle"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></button>
                 <button @click="toggleBanUser(u)" class="p-2 text-zinc-400 hover:text-amber-600 hover:bg-amber-50 rounded-xl transition-colors" :title="u.isBanned ? 'Yasağı Kaldır' : 'Hesabı Askıya Al'"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button>
                 <button @click="deleteUser(u.id)" class="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors" title="Kalıcı Olarak Sil"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
@@ -139,6 +172,53 @@ const toggleBanUser = async (u: any) => {
 
             <button type="submit" :disabled="isSubmittingUser" class="w-full bg-black text-white py-4 rounded-xl font-bold mt-4 hover:bg-zinc-800 transition-colors shadow-lg disabled:opacity-70">{{ isSubmittingUser ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet' }}</button>
           </form>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div v-if="isHistoryModalOpen" class="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="isHistoryModalOpen = false"></div>
+        <div class="relative w-full max-w-2xl bg-white rounded-3xl p-8 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+          <div class="flex justify-between items-center mb-6 shrink-0">
+             <div>
+               <h2 class="text-2xl font-bold text-black flex items-center gap-2"><svg class="w-6 h-6 text-indigo-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg> Cari / Satın Alma Geçmişi</h2>
+               <p class="text-sm text-zinc-500 mt-1 font-medium">{{ historyUser?.name || historyUser?.email }} kullanıcısına ait sipariş dökümü.</p>
+             </div>
+             <button @click="isHistoryModalOpen = false" class="p-2 bg-zinc-100 hover:bg-zinc-200 rounded-full transition-colors"><svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg></button>
+          </div>
+          
+          <div class="flex-1 overflow-y-auto custom-scrollbar border border-zinc-200 rounded-2xl bg-[#fafafa]">
+             <div v-if="computedHistory.length > 0">
+               <table class="w-full text-left text-sm whitespace-nowrap">
+                 <thead class="bg-zinc-100 border-b border-zinc-200 text-zinc-500 text-[10px] uppercase font-bold tracking-widest sticky top-0 z-10">
+                   <tr><th class="px-5 py-3">Ürün (Proje)</th><th class="px-5 py-3">Lisans</th><th class="px-5 py-3">Tarih</th><th class="px-5 py-3 text-right">Ödenen Tutar</th></tr>
+                 </thead>
+                 <tbody class="divide-y divide-zinc-200">
+                   <tr v-for="p in computedHistory" :key="p.id" class="hover:bg-white transition-colors bg-zinc-50/50">
+                      <td class="px-5 py-3 font-bold text-black">
+                         <NuxtLink v-if="p.projectId" :to="`/item/${p.projectId}`" target="_blank" class="hover:text-indigo-600 hover:underline transition-colors decoration-2 underline-offset-2 select-all">{{ p.project?.title || 'Bilinmeyen Proje' }}</NuxtLink>
+                         <span v-else>{{ p.project?.title || 'Bilinmeyen Proje' }}</span>
+                      </td>
+                      <td class="px-5 py-3"><span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded text-[10px] font-bold">{{ p.licenseType }}</span></td>
+                      <td class="px-5 py-3 text-zinc-500 font-medium text-xs">{{ new Date(p.createdAt).toLocaleDateString() }}</td>
+                      <td class="px-5 py-3 text-right font-black text-emerald-600">${{ p.pricePaid !== null ? p.pricePaid : (p.project?.price || 0) }}</td>
+                   </tr>
+                 </tbody>
+               </table>
+               <div class="p-4 bg-white border-t border-zinc-200 flex justify-between items-center">
+                  <span class="text-xs font-bold text-zinc-500 uppercase tracking-widest">Toplam Harcama</span>
+                  <span class="text-2xl font-black text-black">${{ computedHistory.reduce((acc, curr) => acc + (curr.pricePaid !== null ? curr.pricePaid : (curr.project?.price || 0)), 0) }}</span>
+               </div>
+             </div>
+             <div v-else class="py-12 flex flex-col items-center justify-center text-center">
+                <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border border-zinc-200 mb-3 text-zinc-300">
+                  <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                </div>
+                <h4 class="font-bold text-black text-sm">Geçmiş Bulunamadı</h4>
+                <p class="text-xs text-zinc-500 mt-1 max-w-[200px]">Bu kullanıcı sisteme henüz hiç satın alma işlemi yapmamış.</p>
+             </div>
+          </div>
         </div>
       </div>
     </Teleport>

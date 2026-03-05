@@ -6,16 +6,16 @@ const prisma = new PrismaClient()
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { email, password, name } = body
+  const { email, password, name, phone } = body
 
-  if (!email || !password) throw createError({ statusCode: 400, statusMessage: 'Zorunlu alanlar eksik' })
+  if (!email || !password || !phone) throw createError({ statusCode: 400, statusMessage: 'Zorunlu alanlar eksik' })
 
   const existing = await prisma.user.findUnique({ where: { email } })
   if (existing) throw createError({ statusCode: 400, statusMessage: 'Bu email zaten kayitli' })
 
   const hashedPassword = await bcrypt.hash(password, 10)
   const user = await prisma.user.create({
-    data: { email, password: hashedPassword, name: name || email.split('@')[0], role: 'USER', plan: 'FREE', isPro: false }
+    data: { email, password: hashedPassword, name: name || email.split('@')[0], phone, role: 'USER', plan: 'FREE', isPro: false }
   })
 
   const payload = {

@@ -35,11 +35,12 @@ const { data: user, refresh: refreshUser } = await useFetch('/api/auth/me', {
 
 const hasPurchased = computed(() => user.value?.purchases?.some((p: any) => p.projectId === props.item?.id || p.id === props.item?.id))
 const isFree = computed(() => !props.item?.price || props.item?.price <= 0)
-const hasAccess = computed(() => user.value?.role === 'ADMIN' || (props.item?.isPremium && user.value?.plan === 'PRO') || isFree.value || hasPurchased.value)
+const hasAccess = computed(() => user.value?.role === 'ADMIN' || (props.item?.isPremium && (user.value?.plan === 'PRO' || user.value?.plan === 'ULTIMATE')) || isFree.value || hasPurchased.value)
 
 const finalPrice = computed(() => {
   if (!props.item?.price) return 0
-  return selectedLicense.value === 'COMMERCIAL' ? props.item.price * 3 : props.item.price
+  const basePrice = props.item.discountPrice || props.item.price
+  return selectedLicense.value === 'COMMERCIAL' ? basePrice * 3 : basePrice
 })
 
 const isProcessing = ref(false)
@@ -122,7 +123,7 @@ const displayCategories = computed(() => {
 
 const mediaItems = computed(() => {
   const items = []
-  if (props.item?.productType === '3D_MODEL' && props.item?.demoUrl) {
+  if (props.item?.productType === 'MODEL_3D' && props.item?.demoUrl) {
     items.push({ type: '3d', url: props.item.demoUrl })
   } else if (props.item?.video || props.item?.videoUrl) {
     items.push({ type: 'video', url: props.item?.video || props.item?.videoUrl })
@@ -276,13 +277,34 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                        </ul>
                      </div>
 
-                     <div v-if="!hasAccess && !isFree" class="space-y-3 mb-8">
-                       <h4 class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Select License</h4>
+                     <div v-if="(!hasAccess || user?.plan === 'ULTIMATE') && !isFree" class="space-y-3 mb-8">
+                        <h4 class="text-xs font-bold text-zinc-400 uppercase tracking-widest mb-2">Select License</h4>
+
+                        <!-- ULTIMATE USERS LIFETIME CARD -->
+                        <div v-if="user?.plan === 'ULTIMATE'" class="p-4 rounded-2xl border-2 border-emerald-500 bg-emerald-50/50 relative mt-2 mb-4">
+                            <div class="flex justify-between items-center mb-1">
+                              <h5 class="font-bold text-emerald-900">Ultimate Commercial License</h5>
+                              <div class="flex flex-col items-end">
+                                <span class="text-[10px] text-emerald-600/70 font-bold line-through -mb-1">${{ (item?.discountPrice || item?.price) * 3 }}</span>
+                                <span class="font-black text-lg text-emerald-700">$0 <span class="text-[10px] bg-emerald-500 text-white px-1 py-0.5 rounded ml-1">LIFETIME</span></span>
+                              </div>
+                            </div>
+                          <p class="text-[13px] text-emerald-700/80 mb-3 font-medium">Tüm ticari haklar ve kaynak kodları ömür boyu hesabınıza tanımlandı.</p>
+                          <ul class="space-y-1.5 mt-2 border-t border-emerald-200/60 pt-3">
+                            <li class="flex items-center gap-2 text-xs text-emerald-800 font-bold"><svg class="w-3.5 h-3.5 text-emerald-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Sınırsız İndirme & Kullanım</li>
+                          </ul>
+                        </div>
+
+                        <!-- REGULAR USERS SELECTOR -->
+                        <template v-else>
                        <div @click="selectedLicense = 'STANDARD'" :class="selectedLicense === 'STANDARD' ? 'border-black bg-zinc-50' : 'border-zinc-200 bg-white'" class="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:border-zinc-300 relative">
-                         <div class="flex justify-between items-center mb-1">
-                           <h5 class="font-bold text-black">Standard License</h5>
-                           <span class="font-black text-lg">${{ item?.price }}</span>
-                         </div>
+                           <div class="flex justify-between items-center mb-1">
+                             <h5 class="font-bold text-black">Standard License</h5>
+                             <div class="flex flex-col items-end">
+                               <span v-if="item?.discountPrice" class="text-[10px] text-zinc-400 font-bold line-through -mb-1">${{ item.price }}</span>
+                               <span class="font-black text-lg">${{ item?.discountPrice || item?.price }}</span>
+                             </div>
+                           </div>
                          <p class="text-sm text-zinc-500 mb-3">For a single personal or client project.</p>
                          <ul class="space-y-1.5 mt-2 border-t border-zinc-200/60 pt-3">
                            <li class="flex items-center gap-2 text-xs text-zinc-600 font-medium"><svg class="w-3.5 h-3.5 text-black shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Single End Product</li>
@@ -291,20 +313,44 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                        </div>
 
                        <div @click="selectedLicense = 'COMMERCIAL'" :class="selectedLicense === 'COMMERCIAL' ? 'border-indigo-600 bg-indigo-50/50' : 'border-zinc-200 bg-white'" class="p-4 rounded-2xl border-2 cursor-pointer transition-all hover:border-zinc-300 relative mt-3">
-                         <div class="flex justify-between items-center mb-1">
-                           <h5 class="font-bold text-indigo-900">Commercial / Extended</h5>
-                           <span class="font-black text-lg text-indigo-700">${{ item?.price * 3 }}</span>
-                         </div>
+                           <div class="flex justify-between items-center mb-1">
+                             <h5 class="font-bold text-indigo-900">Commercial / Extended</h5>
+                             <div class="flex flex-col items-end">
+                               <span v-if="item?.discountPrice" class="text-[10px] text-indigo-400/70 font-bold line-through -mb-1">${{ item.price * 3 }}</span>
+                               <span class="font-black text-lg text-indigo-700">${{ (item?.discountPrice || item?.price) * 3 }}</span>
+                             </div>
+                           </div>
                          <p class="text-sm text-indigo-700/70 mb-3">For unlimited projects, SaaS, or templates.</p>
                          <ul class="space-y-1.5 mt-2 border-t border-indigo-200/50 pt-3">
                            <li class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Unlimited End Products</li>
                            <li class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Resale in Templates Allowed</li>
-                           <li v-if="item?.productType === '3D_MODEL'" class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Native 3D Assets Included (.blend/.fbx)</li>
+                           <li v-if="item?.productType === 'MODEL_3D'" class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Native 3D Assets Included (.blend/.fbx)</li>
                            <li v-else class="flex items-center gap-2 text-xs text-indigo-800 font-medium"><svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg> Figma / Design Files Included</li>
                          </ul>
                        </div>
+                        </template>
+
+                         <!-- UPSELL BANNER -->
+                         <div v-if="!user?.isPro" class="mt-5 bg-gradient-to-r from-amber-100 to-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group">
+                           <div>
+                             <h5 class="text-amber-900 font-bold text-sm mb-0.5">Save money with PRO ✦</h5>
+                             <p class="text-amber-700/80 text-xs font-medium">Get this item + 100 more premium assets instantly for just $29/mo.</p>
+                           </div>
+                           <NuxtLink to="/pricing" class="shrink-0 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-colors w-full sm:w-auto text-center transform hover:scale-105">
+                             Unlock All
+                           </NuxtLink>
+                         </div>
+                         <div v-else-if="user?.plan === 'PRO'" class="mt-5 bg-gradient-to-r from-indigo-100 to-indigo-50 border border-indigo-200 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 group">
+                           <div>
+                             <h5 class="text-indigo-900 font-bold text-sm mb-0.5">Need Commercial rights? 🚀</h5>
+                             <p class="text-indigo-700/80 text-xs font-medium">Upgrade to Ultimate and use all items in commercial/client projects.</p>
+                           </div>
+                           <NuxtLink to="/pricing" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold shadow-sm transition-colors w-full sm:w-auto text-center transform hover:scale-105">
+                             Go Ultimate
+                           </NuxtLink>
+                         </div>
+                       </div>
                      </div>
-                   </div>
 
                    <div v-if="activeTab === 'docs'" class="animate-in fade-in h-full flex flex-col">
                      <div class="bg-white p-6 md:p-8 rounded-2xl border border-zinc-200 shadow-sm">
@@ -407,17 +453,33 @@ onUnmounted(() => { if (typeof document !== 'undefined') document.body.style.ove
                      Kontrol Paneline Git
                    </NuxtLink>
                  </div>
-                 <div v-else-if="hasAccess && !hasPurchased">
-                   <button @click="activeTab='code'" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-[56px] rounded-xl font-bold shadow-xl flex justify-center items-center gap-2 text-[15px] transition-transform active:scale-95 focus:ring-4 focus:ring-emerald-200">
-                     <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Kaynak Kodu Görüntüle
-                   </button>
-                 </div>
+                  <div v-else-if="user?.plan === 'ULTIMATE' && !isFree" class="flex flex-col gap-3">
+                    <div class="w-full bg-emerald-50 border border-emerald-200 text-emerald-700 h-[48px] rounded-xl font-bold flex justify-center items-center gap-2 text-[14px]">
+                       <Icon name="lucide:check-circle" class="w-4 h-4 text-emerald-600" /> Size Bedava (Lifetime Plan)
+                    </div>
+                    <div class="flex gap-2">
+                       <a v-if="item?.fileUrl" :href="'/api/user/download?projectId=' + item.id" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white h-[56px] rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 text-[15px] transition-all active:scale-95">
+                         <Icon name="lucide:folder-down" class="w-5 h-5" /> İndir
+                       </a>
+                       <button @click="activeTab='code'" class="flex-1 bg-black hover:bg-zinc-800 text-white h-[56px] rounded-xl font-bold shadow-sm flex justify-center items-center gap-2 text-[15px] transition-all active:scale-95">
+                         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Kodlar
+                       </button>
+                    </div>
+                  </div>
+                  <div v-else-if="hasAccess && !hasPurchased">
+                    <button @click="activeTab='code'" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white h-[56px] rounded-xl font-bold shadow-xl flex justify-center items-center gap-2 text-[15px] transition-transform active:scale-95 focus:ring-4 focus:ring-emerald-200">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg> Kaynak Kodu Görüntüle
+                    </button>
+                  </div>
                  <div v-else>
                    <button @click="handleAddToCart" :disabled="isProcessing" class="w-full bg-black hover:bg-zinc-800 text-white h-[56px] rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 disabled:opacity-70 text-[15px] transition-transform active:scale-95 focus:ring-4 focus:ring-zinc-200">
                      <Icon name="lucide:shopping-cart" class="w-5 h-5 text-white/90" />
                      <span v-if="isProcessing">Sepete Ekleniyor...</span>
                      <span v-else>Sepete Ekle • ${{ finalPrice }}</span>
                    </button>
+                 </div>
+                 <div class="mt-3 text-center">
+                   <p class="text-[10px] text-zinc-400 font-medium leading-tight">Dijital ürünlerde erişim anında sağlandığı için <strong class="text-rose-500">kesinlikle iade (refund) yapılmamaktadır</strong>.</p>
                  </div>
                </div>
 

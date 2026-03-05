@@ -82,9 +82,15 @@ const subscribe = () => {
         <h1 class="text-[2.8rem] sm:text-[3.8rem] md:text-[5rem] lg:text-[5.5rem] font-bold tracking-tight mb-6 leading-[1.05]">
           Buy & ship stunning<br/><span class="text-zinc-500 font-light italic">web animations.</span>
         </h1>
-        <p class="text-zinc-400 text-lg sm:text-xl mb-10 max-w-2xl font-light tracking-wide">
+        <p class="text-zinc-400 text-lg sm:text-xl mb-6 max-w-2xl font-light tracking-wide">
           Production-ready GSAP, Three.js, CSS effects and complete UI components. Copy, paste, ship.
         </p>
+        <div class="flex items-center justify-center gap-4 mb-10 fade-in">
+           <NuxtLink to="/pricing" class="bg-white text-black hover:bg-zinc-200 px-6 py-3 rounded-xl font-bold text-sm transition-all shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center gap-2">
+              Unlock All Access <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+           </NuxtLink>
+           <a href="#assets" class="text-zinc-400 hover:text-white px-6 py-3 font-semibold text-sm transition-colors">Browse Free</a>
+        </div>
 
         <!-- Search + filter -->
         <div class="w-full max-w-2xl flex flex-col sm:flex-row gap-3 items-center">
@@ -216,8 +222,8 @@ const subscribe = () => {
           <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
           New drops weekly
         </div>
-        <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-4">Get notified of new animations</h2>
-        <p class="text-zinc-400 mb-10 text-lg font-light">We ship new GSAP effects, Three.js scenes, and complete UI components every week.</p>
+        <h2 class="text-3xl md:text-4xl font-bold tracking-tight mb-4">Join 4,200+ developers shipping faster</h2>
+        <p class="text-zinc-400 mb-10 text-lg font-light">Get notified of new GSAP effects and Three.js scenes, or <NuxtLink to="/pricing" class="text-indigo-400 hover:text-indigo-300 font-bold underline">upgrade to PRO</NuxtLink> to unlock them all instantly.</p>
         <div class="flex flex-col sm:flex-row gap-3 max-w-md mx-auto">
           <input v-model="email" type="email" placeholder="you@example.com" class="flex-1 bg-white/5 border border-white/10 focus:border-indigo-500 rounded-2xl px-5 py-4 text-white placeholder:text-zinc-600 outline-none transition-colors text-sm" />
           <button @click="subscribe" class="bg-white hover:bg-zinc-100 text-black px-6 py-4 rounded-2xl font-bold text-sm transition-all shrink-0 shadow-xl hover:scale-[1.02] active:scale-[0.98]">

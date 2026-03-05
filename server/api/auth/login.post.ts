@@ -13,6 +13,7 @@ export default defineEventHandler(async (event) => {
   const user = await prisma.user.findUnique({ where: { email } })
   if (!user) throw createError({ statusCode: 401, statusMessage: 'Kullanici bulunamadi' })
   if (user.isBanned) throw createError({ statusCode: 403, statusMessage: 'Hesabınız platform yöneticileri tarafından askıya alınmıştır.' })
+  if (user.deletedAt) throw createError({ statusCode: 403, statusMessage: 'Bu hesap silinmiştir. Giriş yapılamaz.' })
 
   const isValid = await bcrypt.compare(password, user.password)
   if (!isValid) throw createError({ statusCode: 401, statusMessage: 'Hatali sifre' })

@@ -14,7 +14,10 @@ export default defineEventHandler(async (event) => {
       description: body.description,
       videoUrl: body.videoUrl,
       sourceUrl: body.sourceUrl,
+      demoUrl: body.demoUrl,
+      dependencies: body.dependencies,
       price: parseFloat(body.price),
+      discountPrice: body.discountPrice ? parseFloat(body.discountPrice) : null,
       categories: body.categories,
       tags: body.tags,
       techStack: body.techStack,
@@ -22,10 +25,14 @@ export default defineEventHandler(async (event) => {
       reviewCount: parseInt(body.reviewCount),
       status: body.status,
       isPremium: body.isPremium,
-      sourceCode: body.sourceCode,
+      productType: body.productType,
       sourceCodeReact: body.sourceCodeReact,
       sourceCodeVue: body.sourceCodeVue,
-      sourceCodeHtml: body.sourceCodeHtml
+      sourceCodeHtml: body.sourceCodeHtml,
+      fileUrl: body.fileUrl,
+      images: body.images,
+      documentation: body.documentation,
+      features: body.features
     }
   })
 })

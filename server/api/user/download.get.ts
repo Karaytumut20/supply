@@ -29,7 +29,7 @@ export default defineEventHandler(async (event) => {
         isAuthorized = true
     } else if (project.isPremium === false && project.price === 0) {
         isAuthorized = true // Free item
-    } else if (user.plan === 'PRO') {
+    } else if (user.plan === 'PRO' || user.plan === 'ULTIMATE') {
         isAuthorized = true
     } else {
         // Check if user purchased this specific item

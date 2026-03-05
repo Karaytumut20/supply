@@ -34,6 +34,8 @@ const hasPurchased = computed(() => {
   return user.value.purchases.some((p: any) => p.projectId === props.item.id || p.id === props.item.id);
 })
 
+const hasAccess = computed(() => user.value?.role === 'ADMIN' || (props.item?.isPremium && (user.value?.plan === 'PRO' || user.value?.plan === 'ULTIMATE')) || isFree.value || hasPurchased.value)
+
 const techColor = (tech: string) => {
   const t = tech.toLowerCase()
   if (t.includes('gsap')) return 'bg-green-50 text-green-700 border-green-200'
@@ -72,8 +74,11 @@ const quickSave = async (e: Event) => {
         <span class="bg-indigo-600 text-white px-3 py-1.5 rounded-full text-[10px] font-black tracking-widest shadow-md flex items-center gap-1.5"><Icon name="lucide:check-circle" class="w-3.5 h-3.5"/> SAHİP</span>
       </div>
 
-      <div class="absolute top-5 right-5 z-20">
-        <span v-if="!isFree" class="bg-black/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-black/10">${{ item.price }}</span>
+      <div class="absolute top-5 right-5 z-20 flex flex-col items-end gap-1">
+        <template v-if="!isFree">
+          <span v-if="item.discountPrice" class="bg-rose-500/90 backdrop-blur-sm text-white px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wide shadow-sm line-through opacity-80">${{ item.price }}</span>
+          <span class="bg-black/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-black/10">${{ item.discountPrice || item.price }}</span>
+        </template>
         <span v-else class="bg-emerald-500/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-full text-[11px] font-bold tracking-wide shadow-lg shadow-emerald-500/20">Free</span>
       </div>
 

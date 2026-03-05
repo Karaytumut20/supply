@@ -157,7 +157,13 @@ definePageMeta({
               </div>
            </button>
 
-           <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-4 px-2">
+           <div class="text-center mt-2 px-4">
+             <p class="text-[11px] text-zinc-500 leading-relaxed font-medium">
+               <strong class="text-zinc-300">İade Politikası:</strong> Dijital ürünlerin doğası gereği (yazılım, şablon, animasyon, 3D model vs.), satın alma işlemi tamamlandıktan ve kaynak dosyalarına erişim sağlandıktan sonra <strong class="text-rose-400">kesinlikle iade yapılmamaktadır.</strong> Satın alarak bu şartı kabul etmiş olursunuz.
+             </p>
+           </div>
+
+           <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mt-2 px-2">
              <div class="flex items-center gap-2 opacity-60 hover:opacity-100 transition-all duration-500 cursor-pointer">
                 <Icon name="lucide:credit-card" class="w-5 h-5 text-zinc-400" />
                 <span class="text-[10px] font-bold tracking-widest uppercase text-zinc-400">Kredi / Banka Kartı</span>

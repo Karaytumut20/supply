@@ -61,6 +61,7 @@ const toggleUserMenu = () => {
       </div>
 
       <div class="flex items-center gap-4 sm:gap-6 text-[14px] font-medium">
+        <NuxtLink to="/requests" class="hidden sm:flex text-zinc-500 hover:text-indigo-600 transition-colors">İstekler</NuxtLink>
         <NuxtLink to="/ticket" class="hidden sm:flex text-zinc-500 hover:text-black transition-colors">Support</NuxtLink>
         <button @click="isAboutOpen = true" class="hidden sm:flex text-zinc-500 hover:text-black transition-colors">About</button>
 

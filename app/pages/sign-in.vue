@@ -4,6 +4,7 @@ import { ref } from 'vue'
 const isLoginMode = ref(true)
 const name = ref('')
 const email = ref('')
+const phone = ref('')
 const password = ref('')
 const isLoading = ref(false)
 const errorMessage = ref('')
@@ -17,9 +18,14 @@ const handleSubmit = async () => {
   errorMessage.value = '';
   try {
     const endpoint = isLoginMode.value ? '/api/auth/login' : '/api/auth/register';
+    const bodyArgs: any = { email: email.value, password: password.value }
+    if (!isLoginMode.value) {
+       bodyArgs.name = name.value;
+       bodyArgs.phone = phone.value;
+    }
     await $fetch(endpoint, {
       method: 'POST',
-      body: { name: name.value, email: email.value, password: password.value }
+      body: bodyArgs
     });
     window.location.href = '/dashboard';
   } catch (err: any) {
@@ -56,9 +62,15 @@ const handleSubmit = async () => {
         <p class="text-zinc-500 text-sm mb-8">{{ isLoginMode ? 'Enter your details below to access your account.' : 'Fill in the details to join the community.' }}</p>
         <div v-if="errorMessage" class="mb-4 p-3 bg-red-50 text-red-600 text-sm rounded-xl border border-red-100">{{ errorMessage }}</div>
         <form @submit.prevent="handleSubmit" class="flex flex-col gap-5">
-          <div v-if="!isLoginMode">
-            <label class="block text-sm font-medium text-zinc-700 mb-1.5">Full Name</label>
-            <input v-model="name" type="text" required placeholder="John Doe" class="w-full bg-[#f4f4f5] border border-transparent focus:bg-white focus:border-zinc-300 focus:ring-4 focus:ring-zinc-100 rounded-xl px-4 py-3.5 text-black outline-none transition-all duration-200" />
+          <div v-if="!isLoginMode" class="flex flex-col gap-5">
+            <div>
+              <label class="block text-sm font-medium text-zinc-700 mb-1.5">Full Name</label>
+              <input v-model="name" type="text" required placeholder="John Doe" class="w-full bg-[#f4f4f5] border border-transparent focus:bg-white focus:border-zinc-300 focus:ring-4 focus:ring-zinc-100 rounded-xl px-4 py-3.5 text-black outline-none transition-all duration-200" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-zinc-700 mb-1.5">Phone Number</label>
+              <input v-model="phone" type="tel" required placeholder="+1 234 567 8900" class="w-full bg-[#f4f4f5] border border-transparent focus:bg-white focus:border-zinc-300 focus:ring-4 focus:ring-zinc-100 rounded-xl px-4 py-3.5 text-black outline-none transition-all duration-200" />
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium text-zinc-700 mb-1.5">Email address</label>

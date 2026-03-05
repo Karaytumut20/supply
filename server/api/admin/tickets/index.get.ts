@@ -9,7 +9,10 @@ export default defineEventHandler(async (event) => {
 
     try {
         const tickets = await prisma.ticket.findMany({
-            include: { user: { select: { name: true, email: true, plan: true } } },
+            include: {
+                user: { select: { name: true, email: true, plan: true } },
+                messages: { orderBy: { createdAt: 'asc' }, include: { user: { select: { name: true, role: true } } } }
+            },
             orderBy: { createdAt: 'desc' }
         })
         return tickets
